@@ -3,7 +3,11 @@ use dioxus::prelude::*;
 use crate::app::{NetworkMode, Tab};
 
 #[component]
-pub fn NetworkToggleOption(network_mode: Signal<NetworkMode>, mode: NetworkMode) -> Element {
+pub fn NetworkToggleOption(
+    network_mode: Signal<NetworkMode>,
+    mode: NetworkMode,
+    on_select: EventHandler<NetworkMode>,
+) -> Element {
     let is_selected = *network_mode.read() == mode;
     let mut setter = network_mode;
     rsx! {
@@ -12,7 +16,10 @@ pub fn NetworkToggleOption(network_mode: Signal<NetworkMode>, mode: NetworkMode)
                 r#type: "radio",
                 name: "network-mode",
                 checked: is_selected,
-                onchange: move |_| setter.set(mode),
+                onchange: move |_| {
+                    setter.set(mode);
+                    on_select.call(mode);
+                },
             }
             span { "{mode.label()}" }
         }

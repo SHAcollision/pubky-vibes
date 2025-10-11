@@ -3,14 +3,13 @@ use dioxus::prelude::*;
 use pubky::{Capabilities, Keypair, PubkyAuthFlow, PubkySession};
 use url::Url;
 
-use crate::app::NetworkMode;
 use crate::tabs::format_session_info;
 use crate::utils::logging::{LogEntry, LogLevel, push_log};
-use crate::utils::pubky::build_pubky;
+use crate::utils::pubky::PubkyFacadeState;
 use crate::utils::qr::generate_qr_data_url;
 
 pub fn render_auth_tab(
-    network_mode: Signal<NetworkMode>,
+    pubky_state: Signal<PubkyFacadeState>,
     keypair: Signal<Option<Keypair>>,
     session: Signal<Option<PubkySession>>,
     session_details: Signal<String>,
@@ -34,7 +33,7 @@ pub fn render_auth_tab(
     let mut relay_binding = auth_relay_input.clone();
     let mut request_binding = auth_request_input.clone();
 
-    let start_network = network_mode.clone();
+    let start_pubky_state = pubky_state.clone();
     let start_caps_signal = auth_caps_input.clone();
     let start_relay_signal = auth_relay_input.clone();
     let start_flow_signal = auth_flow.clone();
@@ -57,7 +56,7 @@ pub fn render_auth_tab(
     let mut cancel_qr_signal = auth_qr_data.clone();
     let cancel_logs = logs.clone();
 
-    let approve_network = network_mode.clone();
+    let approve_pubky_state = pubky_state.clone();
     let approve_keypair = keypair.clone();
     let approve_request_signal = auth_request_input.clone();
     let approve_logs = logs.clone();
@@ -93,7 +92,16 @@ pub fn render_auth_tab(
                             return;
                         }
                         let relay_text = start_relay_signal.read().clone();
-                        let network = *start_network.read();
+                        let maybe_pubky = { start_pubky_state.read().facade() };
+                        let Some(pubky) = maybe_pubky else {
+                            push_log(
+                                start_logs.clone(),
+                                LogLevel::Info,
+                                "Pubky facade is still starting up. Try again shortly.",
+                            );
+                            return;
+                        };
+                        let pubky = pubky.clone();
                         let mut flow_slot = start_flow_signal.clone();
                         let mut url_slot = start_url_signal.clone();
                         let mut qr_slot = start_qr_signal.clone();
@@ -103,7 +111,6 @@ pub fn render_auth_tab(
                             let result = async move {
                                 let capabilities = Capabilities::try_from(caps_text.trim())
                                     .map_err(|e| anyhow!("Invalid capabilities: {e}"))?;
-                                let pubky = build_pubky(network)?;
                                 let flow = if relay_text.trim().is_empty() {
                                     pubky.start_auth_flow(&capabilities)?
                                 } else {
@@ -235,13 +242,21 @@ pub fn render_auth_tab(
                             push_log(approve_logs.clone(), LogLevel::Error, "Paste a pubkyauth:// URL to approve");
                             return;
                         }
+                        let maybe_pubky = { approve_pubky_state.read().facade() };
+                        let Some(pubky) = maybe_pubky else {
+                            push_log(
+                                approve_logs.clone(),
+                                LogLevel::Info,
+                                "Pubky facade is still starting up. Try again shortly.",
+                            );
+                            return;
+                        };
                         if let Some(kp) = approve_keypair.read().as_ref().cloned() {
-                            let network = *approve_network.read();
                             let url_string = url.trim().to_string();
                             let logs_task = approve_logs.clone();
+                            let pubky = pubky.clone();
                             spawn(async move {
                                 let result = async move {
-                                    let pubky = build_pubky(network)?;
                                     let signer = pubky.signer(kp.clone());
                                     signer.approve_auth(&url_string).await?;
                                     Ok::<_, anyhow::Error>(format!(

@@ -1,13 +1,12 @@
 use dioxus::prelude::*;
 use pubky::PubkySession;
 
-use crate::app::NetworkMode;
 use crate::utils::http::format_response;
 use crate::utils::logging::{LogEntry, LogLevel, push_log};
-use crate::utils::pubky::build_pubky;
+use crate::utils::pubky::PubkyFacadeState;
 
 pub fn render_storage_tab(
-    network_mode: Signal<NetworkMode>,
+    pubky_state: Signal<PubkyFacadeState>,
     session: Signal<Option<PubkySession>>,
     storage_path: Signal<String>,
     storage_body: Signal<String>,
@@ -45,7 +44,7 @@ pub fn render_storage_tab(
     let public_resource_signal = public_resource.clone();
     let public_response_signal = public_response.clone();
     let public_logs = logs.clone();
-    let public_network = network_mode.clone();
+    let public_pubky_state = pubky_state.clone();
 
     rsx! {
         div { class: "tab-body",
@@ -168,10 +167,18 @@ pub fn render_storage_tab(
                         }
                         let mut response_signal = public_response_signal.clone();
                         let logs_task = public_logs.clone();
-                        let network = *public_network.read();
+                        let maybe_pubky = { public_pubky_state.read().facade() };
+                        let Some(pubky) = maybe_pubky else {
+                            push_log(
+                                public_logs.clone(),
+                                LogLevel::Info,
+                                "Pubky facade is still starting up. Try again shortly.",
+                            );
+                            return;
+                        };
+                        let pubky = pubky.clone();
                         spawn(async move {
                             let result = async move {
-                                let pubky = build_pubky(network)?;
                                 let resp = pubky.public_storage().get(resource.clone()).await?;
                                 let formatted = format_response(resp).await?;
                                 response_signal.set(formatted.clone());

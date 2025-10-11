@@ -288,7 +288,7 @@ main {
     box-shadow: 0 18px 40px rgba(2, 6, 23, 0.65);
     border: 1px solid rgba(148, 163, 184, 0.22);
     min-width: 0;
-    overflow: hidden;
+    overflow-y: auto;
 }
 
 .tab-body {

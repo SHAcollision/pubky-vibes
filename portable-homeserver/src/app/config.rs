@@ -5,12 +5,13 @@ use std::{
     str::FromStr,
 };
 
-use anyhow::{Context, anyhow};
+use anyhow::{Context, Result, anyhow};
 use dioxus::prelude::WritableExt;
 use dioxus::signals::{Signal, SignalData, Storage};
 use directories::ProjectDirs;
 use pubky_homeserver::{ConfigToml, Domain, LoggingToml, SignupMode};
 
+/// Shape of the editable configuration exposed in the UI form.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct ConfigForm {
     pub(crate) signup_mode: SignupMode,
@@ -63,6 +64,8 @@ impl ConfigForm {
     }
 }
 
+/// Tracks the current form state, whether there are unsaved changes, and any
+/// feedback to render to the operator.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct ConfigState {
     pub(crate) form: ConfigForm,
@@ -70,13 +73,23 @@ pub(crate) struct ConfigState {
     pub(crate) feedback: Option<ConfigFeedback>,
 }
 
+/// Feedback returned to the operator when saving or loading configuration data.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum ConfigFeedback {
     Saved,
-    Error(String),
+    ValidationError(String),
+    PersistenceError(String),
 }
 
-pub(crate) fn load_config_form_from_dir(data_dir: &str) -> anyhow::Result<ConfigForm> {
+/// Outcome returned by [`persist_config_form`] indicating whether the TOML file was
+/// rewritten.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum ConfigPersistOutcome {
+    Updated,
+    Unchanged,
+}
+
+pub(crate) fn load_config_form_from_dir(data_dir: &str) -> Result<ConfigForm> {
     if data_dir.trim().is_empty() {
         return Ok(ConfigForm::default());
     }
@@ -101,12 +114,15 @@ pub(crate) fn config_state_from_dir(data_dir: &str) -> ConfigState {
         Err(err) => ConfigState {
             form: ConfigForm::default(),
             dirty: false,
-            feedback: Some(ConfigFeedback::Error(err.to_string())),
+            feedback: Some(ConfigFeedback::PersistenceError(err.to_string())),
         },
     }
 }
 
-pub(crate) fn persist_config_form(data_dir: &str, form: &ConfigForm) -> anyhow::Result<()> {
+pub(crate) fn persist_config_form(
+    data_dir: &str,
+    form: &ConfigForm,
+) -> Result<ConfigPersistOutcome> {
     let trimmed = data_dir.trim();
     if trimmed.is_empty() {
         return Err(anyhow!(
@@ -117,14 +133,27 @@ pub(crate) fn persist_config_form(data_dir: &str, form: &ConfigForm) -> anyhow::
     let dir_path = PathBuf::from(trimmed);
     let config_path = dir_path.join("config.toml");
 
-    let mut config = if config_path.is_file() {
-        ConfigToml::from_file(&config_path)
-            .map_err(|err| anyhow!("Failed to parse {}: {}", config_path.display(), err))?
+    let (mut config, had_existing) = if config_path.is_file() {
+        let existing = ConfigToml::from_file(&config_path)
+            .map_err(|err| anyhow!("Failed to parse {}: {}", config_path.display(), err))?;
+        (existing, true)
     } else {
-        ConfigToml::default()
+        (ConfigToml::default(), false)
+    };
+
+    let baseline = if had_existing {
+        Some(config.clone())
+    } else {
+        None
     };
 
     apply_config_form(form, &mut config)?;
+
+    if let Some(previous) = baseline {
+        if previous == config {
+            return Ok(ConfigPersistOutcome::Unchanged);
+        }
+    }
 
     fs::create_dir_all(&dir_path)
         .with_context(|| format!("Failed to create data directory at {}", dir_path.display()))?;
@@ -134,10 +163,10 @@ pub(crate) fn persist_config_form(data_dir: &str, form: &ConfigForm) -> anyhow::
     fs::write(&config_path, rendered)
         .with_context(|| format!("Failed to write {}", config_path.display()))?;
 
-    Ok(())
+    Ok(ConfigPersistOutcome::Updated)
 }
 
-pub(crate) fn apply_config_form(form: &ConfigForm, config: &mut ConfigToml) -> anyhow::Result<()> {
+pub(crate) fn apply_config_form(form: &ConfigForm, config: &mut ConfigToml) -> Result<()> {
     config.general.signup_mode = form.signup_mode.clone();
 
     config.drive.pubky_listen_socket =
@@ -184,19 +213,19 @@ pub(crate) fn default_data_dir() -> String {
     }
 }
 
-fn parse_socket(label: &str, raw: &str) -> anyhow::Result<SocketAddr> {
+fn parse_socket(label: &str, raw: &str) -> Result<SocketAddr> {
     raw.trim()
         .parse()
         .map_err(|err| anyhow!("{} must be in host:port format ({}).", label, err))
 }
 
-fn parse_ip(label: &str, raw: &str) -> anyhow::Result<IpAddr> {
+fn parse_ip(label: &str, raw: &str) -> Result<IpAddr> {
     raw.trim()
         .parse()
         .map_err(|err| anyhow!("{} is not a valid IP address ({}).", label, err))
 }
 
-fn parse_optional_port(label: &str, raw: &str) -> anyhow::Result<Option<u16>> {
+fn parse_optional_port(label: &str, raw: &str) -> Result<Option<u16>> {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
         return Ok(None);
@@ -208,7 +237,7 @@ fn parse_optional_port(label: &str, raw: &str) -> anyhow::Result<Option<u16>> {
         .map_err(|err| anyhow!("{} must be a port number ({}).", label, err))
 }
 
-fn parse_optional_domain(raw: &str) -> anyhow::Result<Option<Domain>> {
+fn parse_optional_domain(raw: &str) -> Result<Option<Domain>> {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
         return Ok(None);
@@ -219,10 +248,7 @@ fn parse_optional_domain(raw: &str) -> anyhow::Result<Option<Domain>> {
         .map_err(|err| anyhow!("Invalid domain '{}': {}", trimmed, err))
 }
 
-fn parse_logging_level(
-    raw: &str,
-    existing: Option<LoggingToml>,
-) -> anyhow::Result<Option<LoggingToml>> {
+fn parse_logging_level(raw: &str, existing: Option<LoggingToml>) -> Result<Option<LoggingToml>> {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
         return Ok(existing.map(|mut logging| {
@@ -286,11 +312,26 @@ mod tests {
         let mut form = ConfigForm::default();
         form.admin_password = "super-secure".into();
 
-        persist_config_form(temp_dir.path().to_str().unwrap(), &form)
+        let outcome = persist_config_form(temp_dir.path().to_str().unwrap(), &form)
             .expect("config should persist");
+        assert_eq!(outcome, ConfigPersistOutcome::Updated);
 
         let saved = ConfigToml::from_file(temp_dir.path().join("config.toml"))
             .expect("config should parse");
         assert_eq!(saved.admin.admin_password, "super-secure");
+    }
+
+    #[test]
+    fn persist_config_form_detects_unchanged_input() {
+        let temp_dir = tempfile::tempdir().expect("temp dir");
+        let form = ConfigForm::default();
+
+        let first = persist_config_form(temp_dir.path().to_str().unwrap(), &form)
+            .expect("initial write should succeed");
+        assert_eq!(first, ConfigPersistOutcome::Updated);
+
+        let second = persist_config_form(temp_dir.path().to_str().unwrap(), &form)
+            .expect("second write should short circuit");
+        assert_eq!(second, ConfigPersistOutcome::Unchanged);
     }
 }

@@ -1,11 +1,13 @@
 use std::sync::LazyLock;
 
+use dioxus::events::{FormEvent, MouseEvent};
 use dioxus::prelude::*;
+use dioxus::signals::{Signal, SyncStorage};
 use pubky_homeserver::SignupMode;
 
 use super::config::{
-    ConfigFeedback, ConfigForm, config_state_from_dir, default_data_dir, load_config_form_from_dir,
-    modify_config_form, persist_config_form,
+    ConfigFeedback, ConfigForm, ConfigState, config_state_from_dir, default_data_dir,
+    load_config_form_from_dir, modify_config_form, persist_config_form,
 };
 use super::state::{NetworkProfile, RunningServer, ServerStatus, resolve_start_spec};
 use super::status::{StatusCopy, StatusDetails, status_copy, status_details};
@@ -17,124 +19,231 @@ pub(crate) fn App() -> Element {
     let initial_data_dir = default_data_dir();
     let initial_config_state = config_state_from_dir(&initial_data_dir);
 
-    let mut data_dir = use_signal_sync(|| initial_data_dir.clone());
+    let data_dir = use_signal_sync(|| initial_data_dir.clone());
     let status = use_signal_sync(ServerStatus::default);
-    let suite_handle = use_signal_sync(|| Option::<RunningServer>::None);
-    let mut network = use_signal_sync(|| NetworkProfile::Mainnet);
+    let running_server = use_signal_sync(|| Option::<RunningServer>::None);
+    let network = use_signal_sync(|| NetworkProfile::Mainnet);
     let config_state = use_signal_sync(|| initial_config_state.clone());
 
-    let start_disabled = matches!(
-        *status.peek(),
-        ServerStatus::Starting | ServerStatus::Running(_) | ServerStatus::Stopping
-    );
-    let stop_disabled = matches!(
-        *status.peek(),
-        ServerStatus::Idle | ServerStatus::Starting | ServerStatus::Stopping
-    );
-    let restart_blocked = matches!(
-        *status.peek(),
-        ServerStatus::Starting | ServerStatus::Stopping
-    );
+    let status_snapshot = status.read().clone();
+    let data_dir_snapshot = data_dir.read().clone();
 
-    let start_server = {
-        let data_dir_signal = data_dir;
-        let mut status_signal = status;
-        let mut suite_signal = suite_handle;
-        let network_signal = network;
-
-        move |_| {
-            let selection = *network_signal.read();
-            let data_dir_value = data_dir_signal.read().to_string();
-            let start_spec = match resolve_start_spec(selection, &data_dir_value) {
-                Ok(spec) => spec,
-                Err(err) => {
-                    *status_signal.write() = ServerStatus::Error(err.to_string());
-                    return;
-                }
-            };
-
-            suite_signal.write().take();
-            spawn_start_task(start_spec, status_signal, suite_signal);
+    rsx! {
+        style { "{STYLE}" }
+        main { class: "app",
+            Hero {}
+            ControlsPanel {
+                data_dir,
+                network,
+                config_state,
+                status,
+                running_server
+            }
+            StatusPanel { status: status_snapshot }
+            FooterNotes { data_dir: data_dir_snapshot }
         }
-    };
+    }
+}
 
-    let stop_server = {
-        let status_signal = status;
-        let suite_signal = suite_handle;
-
-        move |_| {
-            stop_current_server(status_signal, suite_signal);
-        }
-    };
-
-    let load_config = {
-        let data_dir_signal = data_dir;
-        let mut config_signal = config_state;
-
-        move |_| {
-            let dir = data_dir_signal.read().to_string();
-            match load_config_form_from_dir(&dir) {
-                Ok(form) => {
-                    let mut state = config_signal.write();
-                    state.form = form;
-                    state.dirty = false;
-                    state.feedback = None;
-                }
-                Err(err) => {
-                    let mut state = config_signal.write();
-                    state.feedback = Some(ConfigFeedback::Error(err.to_string()));
+#[component]
+fn Hero() -> Element {
+    rsx! {
+        div { class: "hero",
+            img {
+                src: LazyLock::force(&LOGO_DATA_URI).as_str(),
+                alt: "Pubky logo",
+            }
+            div { class: "hero-content",
+                h1 { "Homeserver" }
+                p {
+                    "Start a Pubky homeserver with a single click. Configure endpoints, save the settings, and keep this window open while your node is online."
                 }
             }
         }
-    };
+    }
+}
 
-    let save_and_restart = {
-        let mut config_signal = config_state;
-        let data_dir_signal = data_dir;
-        let status_signal = status;
-        let suite_signal = suite_handle;
-        let network_signal = network;
+#[component]
+fn ControlsPanel(
+    data_dir: Signal<String, SyncStorage>,
+    network: Signal<NetworkProfile, SyncStorage>,
+    config_state: Signal<ConfigState, SyncStorage>,
+    status: Signal<ServerStatus, SyncStorage>,
+    running_server: Signal<Option<RunningServer>, SyncStorage>,
+) -> Element {
+    let status_snapshot = status.read().clone();
+    let start_disabled = matches!(
+        status_snapshot,
+        ServerStatus::Starting | ServerStatus::Running(_) | ServerStatus::Stopping
+    );
+    let stop_disabled = matches!(
+        status_snapshot,
+        ServerStatus::Idle | ServerStatus::Starting | ServerStatus::Stopping
+    );
+    let restart_blocked = matches!(
+        status_snapshot,
+        ServerStatus::Starting | ServerStatus::Stopping
+    );
 
-        move |_| {
-            let form_snapshot = {
-                let state = config_signal.read();
-                state.form.clone()
-            };
-            let dir = data_dir_signal.read().to_string();
+    let selected_network = *network.read();
+    let network_for_start = network;
+    let data_dir_for_start = data_dir;
+    let mut status_for_start = status;
+    let mut running_for_start = running_server;
+    let status_for_stop = status;
+    let running_for_stop = running_server;
+    let mut config_state_for_reload = config_state;
+    let data_dir_for_reload = data_dir;
+    let mut config_state_for_save = config_state;
+    let data_dir_for_save = data_dir;
+    let status_for_save = status;
+    let running_for_save = running_server;
+    let network_for_save = network;
 
-            match persist_config_form(&dir, &form_snapshot) {
-                Ok(_) => {
-                    let selection = *network_signal.read();
-                    let start_spec = match resolve_start_spec(selection, &dir) {
+    rsx! {
+        section { class: "controls",
+            NetworkSelector { selected: selected_network, on_select: move |profile| *network.write() = profile }
+            DataDirInput { value: data_dir.read().clone(), on_change: move |value| *data_dir.write() = value }
+            ConfigEditor {
+                config_state,
+                restart_blocked,
+                on_reload: move |_| {
+                    let dir = data_dir_for_reload.read().to_string();
+                    match load_config_form_from_dir(&dir) {
+                        Ok(form) => {
+                            let mut state = config_state_for_reload.write();
+                            state.form = form;
+                            state.dirty = false;
+                            state.feedback = None;
+                        }
+                        Err(err) => {
+                            let mut state = config_state_for_reload.write();
+                            state.feedback = Some(ConfigFeedback::PersistenceError(err.to_string()));
+                        }
+                    }
+                },
+                on_save_and_restart: move |_| {
+                    let form_snapshot = {
+                        let state = config_state_for_save.read();
+                        state.form.clone()
+                    };
+                    let dir = data_dir_for_save.read().to_string();
+
+                    match persist_config_form(&dir, &form_snapshot) {
+                        Ok(_outcome) => {
+                            let selection = *network_for_save.read();
+                            let start_spec = match resolve_start_spec(selection, &dir) {
+                                Ok(spec) => spec,
+                                Err(err) => {
+                                    let mut state = config_state_for_save.write();
+                                    state.feedback = Some(ConfigFeedback::ValidationError(err.to_string()));
+                                    return;
+                                }
+                            };
+
+                            {
+                                let mut state = config_state_for_save.write();
+                                state.dirty = false;
+                                state.feedback = Some(ConfigFeedback::Saved);
+                            }
+
+                            stop_current_server(status_for_save, running_for_save);
+                            spawn_start_task(start_spec, status_for_save, running_for_save);
+                        }
+                        Err(err) => {
+                            let mut state = config_state_for_save.write();
+                            state.feedback = Some(ConfigFeedback::PersistenceError(err.to_string()));
+                        }
+                    }
+                }
+            }
+            ActionButtons {
+                start_disabled,
+                stop_disabled,
+                on_start: move |_| {
+                    let selection = *network_for_start.read();
+                    let data_dir_value = data_dir_for_start.read().to_string();
+                    let start_spec = match resolve_start_spec(selection, &data_dir_value) {
                         Ok(spec) => spec,
                         Err(err) => {
-                            let mut state = config_signal.write();
-                            state.feedback = Some(ConfigFeedback::Error(err.to_string()));
+                            *status_for_start.write() = ServerStatus::Error(err.to_string());
                             return;
                         }
                     };
 
-                    {
-                        let mut state = config_signal.write();
-                        state.dirty = false;
-                        state.feedback = Some(ConfigFeedback::Saved);
-                    }
-
-                    stop_current_server(status_signal, suite_signal);
-                    spawn_start_task(start_spec, status_signal, suite_signal);
-                }
-                Err(err) => {
-                    let mut state = config_signal.write();
-                    state.feedback = Some(ConfigFeedback::Error(err.to_string()));
+                    running_for_start.write().take();
+                    spawn_start_task(start_spec, status_for_start, running_for_start);
+                },
+                on_stop: move |_| {
+                    stop_current_server(status_for_stop, running_for_stop);
                 }
             }
         }
-    };
+    }
+}
 
-    let data_dir_value = data_dir.read().to_string();
-    let status_snapshot = status.read().clone();
-    let selected_network = *network.read();
-    let config_state_snapshot = config_state.read().clone();
+#[component]
+fn NetworkSelector(selected: NetworkProfile, on_select: EventHandler<NetworkProfile>) -> Element {
+    rsx! {
+        div { class: "network-selector",
+            label { "Select network" }
+            div { class: "network-options",
+                label { class: "network-option",
+                    input {
+                        r#type: "radio",
+                        name: "network",
+                        value: "mainnet",
+                        checked: matches!(selected, NetworkProfile::Mainnet),
+                        onchange: move |_| on_select.call(NetworkProfile::Mainnet),
+                    }
+                    span { "Mainnet" }
+                }
+                label { class: "network-option",
+                    input {
+                        r#type: "radio",
+                        name: "network",
+                        value: "testnet",
+                        checked: matches!(selected, NetworkProfile::Testnet),
+                        onchange: move |_| on_select.call(NetworkProfile::Testnet),
+                    }
+                    span { "Static Testnet" }
+                }
+            }
+            p { class: "footnote",
+                "Testnet runs a local DHT, relays, and homeserver with fixed ports using pubky-testnet."
+            }
+        }
+    }
+}
+
+#[component]
+fn DataDirInput(value: String, on_change: EventHandler<String>) -> Element {
+    rsx! {
+        div {
+            label { r#"Data directory"# }
+            div { class: "data-dir-row",
+                input {
+                    r#type: "text",
+                    value: "{value}",
+                    placeholder: r#"~/Library/Application Support/Pubky"#,
+                    oninput: move |evt| on_change.call(evt.value()),
+                }
+            }
+            p { class: "footnote",
+                "Config, logs, and keys live inside this folder. The homeserver will create missing files automatically."
+            }
+        }
+    }
+}
+
+#[component]
+fn ConfigEditor(
+    config_state: Signal<ConfigState, SyncStorage>,
+    restart_blocked: bool,
+    on_reload: EventHandler<()>,
+    on_save_and_restart: EventHandler<()>,
+) -> Element {
+    let snapshot = config_state.read().clone();
     let ConfigForm {
         signup_mode,
         drive_pubky_listen_socket,
@@ -146,12 +255,11 @@ pub(crate) fn App() -> Element {
         pkdns_public_icann_http_port,
         pkdns_icann_domain,
         logging_level,
-    } = config_state_snapshot.form.clone();
-    let config_feedback = config_state_snapshot.feedback.clone();
-    let save_disabled = restart_blocked || !config_state_snapshot.dirty;
+    } = snapshot.form.clone();
 
-    let config_state_signup_token = config_state;
-    let config_state_signup_open = config_state;
+    let save_disabled = restart_blocked || !snapshot.dirty;
+
+    let feedback = snapshot.feedback.clone();
     let config_state_pubky = config_state;
     let config_state_icann = config_state;
     let config_state_admin_socket = config_state;
@@ -163,287 +271,232 @@ pub(crate) fn App() -> Element {
     let config_state_logging = config_state;
 
     rsx! {
-        style { "{STYLE}" }
-        main { class: "app",
-            div { class: "hero",
-                img {
-                    src: LazyLock::force(&LOGO_DATA_URI).as_str(),
-                    alt: "Pubky logo",
+        div { class: "config-editor",
+            div { class: "config-editor-header",
+                label { "Homeserver configuration" }
+                button { class: "secondary", onclick: move |_: MouseEvent| on_reload.call(()), "Reload from disk" }
+            }
+
+            SignupModePicker { selection: signup_mode, config_state }
+
+            div { class: "config-grid",
+                ConfigField {
+                    label: "Pubky TLS listen socket",
+                    value: drive_pubky_listen_socket,
+                    placeholder: "127.0.0.1:6287",
+                    on_change: move |value| {
+                        modify_config_form(config_state_pubky, |form| {
+                            form.drive_pubky_listen_socket = value;
+                        });
+                    },
                 }
-                div { class: "hero-content",
-                    h1 { "Homeserver" }
+                ConfigField {
+                    label: "ICANN HTTP listen socket",
+                    value: drive_icann_listen_socket,
+                    placeholder: "127.0.0.1:6286",
+                    on_change: move |value| {
+                        modify_config_form(config_state_icann, |form| {
+                            form.drive_icann_listen_socket = value;
+                        });
+                    },
+                }
+                ConfigField {
+                    label: "Admin listen socket",
+                    value: admin_listen_socket,
+                    placeholder: "127.0.0.1:6288",
+                    on_change: move |value| {
+                        modify_config_form(config_state_admin_socket, |form| {
+                            form.admin_listen_socket = value;
+                        });
+                    },
+                }
+                ConfigField {
+                    label: "Admin password",
+                    value: admin_password,
+                    placeholder: "admin",
+                    on_change: move |value| {
+                        modify_config_form(config_state_admin_password, |form| {
+                            form.admin_password = value;
+                        });
+                    },
+                }
+                ConfigField {
+                    label: "Public IP address",
+                    value: pkdns_public_ip,
+                    placeholder: "127.0.0.1",
+                    on_change: move |value| {
+                        modify_config_form(config_state_public_ip, |form| {
+                            form.pkdns_public_ip = value;
+                        });
+                    },
+                }
+                ConfigField {
+                    label: "Public Pubky TLS port",
+                    value: pkdns_public_pubky_tls_port,
+                    placeholder: "6287",
+                    on_change: move |value| {
+                        modify_config_form(config_state_tls_port, |form| {
+                            form.pkdns_public_pubky_tls_port = value;
+                        });
+                    },
+                }
+                ConfigField {
+                    label: "Public ICANN HTTP port",
+                    value: pkdns_public_icann_http_port,
+                    placeholder: "80",
+                    on_change: move |value| {
+                        modify_config_form(config_state_http_port, |form| {
+                            form.pkdns_public_icann_http_port = value;
+                        });
+                    },
+                }
+                ConfigField {
+                    label: "ICANN domain",
+                    value: pkdns_icann_domain,
+                    placeholder: "example.com",
+                    on_change: move |value| {
+                        modify_config_form(config_state_icann_domain, |form| {
+                            form.pkdns_icann_domain = value;
+                        });
+                    },
+                }
+                ConfigField {
+                    label: "Logging level override",
+                    value: logging_level,
+                    placeholder: "info",
+                    on_change: move |value| {
+                        modify_config_form(config_state_logging, |form| {
+                            form.logging_level = value;
+                        });
+                    },
                 }
             }
 
-            section { class: "controls",
-                div { class: "network-selector",
-                    label { "Select network" }
-                    div { class: "network-options",
-                        label { class: "network-option",
-                            input {
-                                r#type: "radio",
-                                name: "network",
-                                value: "mainnet",
-                                checked: matches!(selected_network, NetworkProfile::Mainnet),
-                                onchange: move |_| {
-                                    *network.write() = NetworkProfile::Mainnet;
-                                },
-                            }
-                            span { "Mainnet" }
+            if let Some(feedback) = feedback {
+                match feedback {
+                    ConfigFeedback::Saved => rsx! {
+                        div { class: "config-feedback success",
+                            p { "Configuration saved. Restarting homeserver..." }
                         }
-                        label { class: "network-option",
-                            input {
-                                r#type: "radio",
-                                name: "network",
-                                value: "testnet",
-                                checked: matches!(selected_network, NetworkProfile::Testnet),
-                                onchange: move |_| {
-                                    *network.write() = NetworkProfile::Testnet;
-                                },
-                            }
-                            span { "Static Testnet" }
-                        }
-                    }
-                    p { class: "footnote",
-                        "Testnet runs a local DHT, relays, and homeserver with fixed ports using pubky-testnet."
-                    }
-                }
-
-                div {
-                    label { r#"Data directory"# }
-                    div { class: "data-dir-row",
-                        input {
-                            r#type: "text",
-                            value: "{data_dir_value}",
-                            placeholder: r#"~/Library/Application Support/Pubky"#,
-                            oninput: move |evt| {
-                                let value = evt.value();
-                                *data_dir.write() = value;
-                            }
-                        }
-                    }
-                    p { class: "footnote",
-                        "Config, logs, and keys live inside this folder. The homeserver will create missing files automatically."
-                    }
-                }
-
-                div { class: "config-editor",
-                    div { class: "config-editor-header",
-                        label { "Homeserver configuration" }
-                        button { class: "secondary", onclick: load_config, "Reload from disk" }
-                    }
-
-                    div { class: "signup-mode-group",
-                        span { "Signup mode" }
-                        div { class: "signup-mode-options",
-                            label { class: "signup-mode-option",
-                                input {
-                                    r#type: "radio",
-                                    name: "signup-mode",
-                                    value: "token_required",
-                                    checked: matches!(signup_mode, SignupMode::TokenRequired),
-                                    onchange: move |_| {
-                                        modify_config_form(config_state_signup_token, |form| {
-                                            form.signup_mode = SignupMode::TokenRequired;
-                                        });
-                                    }
-                                }
-                                span { "Token required" }
-                            }
-                            label { class: "signup-mode-option",
-                                input {
-                                    r#type: "radio",
-                                    name: "signup-mode",
-                                    value: "open",
-                                    checked: matches!(signup_mode, SignupMode::Open),
-                                    onchange: move |_| {
-                                        modify_config_form(config_state_signup_open, |form| {
-                                            form.signup_mode = SignupMode::Open;
-                                        });
-                                    }
-                                }
-                                span { "Open signup" }
-                            }
-                        }
-                    }
-
-                    div { class: "config-grid",
-                        div { class: "config-field",
-                            label { "Pubky TLS listen socket" }
-                            input {
-                                r#type: "text",
-                                value: "{drive_pubky_listen_socket}",
-                                placeholder: "127.0.0.1:6287",
-                                oninput: move |evt| {
-                                    let value = evt.value();
-                                    modify_config_form(config_state_pubky, |form| {
-                                        form.drive_pubky_listen_socket = value;
-                                    });
-                                }
-                            }
-                        }
-                        div { class: "config-field",
-                            label { "ICANN HTTP listen socket" }
-                            input {
-                                r#type: "text",
-                                value: "{drive_icann_listen_socket}",
-                                placeholder: "127.0.0.1:6286",
-                                oninput: move |evt| {
-                                    let value = evt.value();
-                                    modify_config_form(config_state_icann, |form| {
-                                        form.drive_icann_listen_socket = value;
-                                    });
-                                }
-                            }
-                        }
-                        div { class: "config-field",
-                            label { "Admin listen socket" }
-                            input {
-                                r#type: "text",
-                                value: "{admin_listen_socket}",
-                                placeholder: "127.0.0.1:6288",
-                                oninput: move |evt| {
-                                    let value = evt.value();
-                                    modify_config_form(config_state_admin_socket, |form| {
-                                        form.admin_listen_socket = value;
-                                    });
-                                }
-                            }
-                        }
-                        div { class: "config-field",
-                            label { "Admin password" }
-                            input {
-                                r#type: "text",
-                                value: "{admin_password}",
-                                placeholder: "admin",
-                                oninput: move |evt| {
-                                    let value = evt.value();
-                                    modify_config_form(config_state_admin_password, |form| {
-                                        form.admin_password = value;
-                                    });
-                                }
-                            }
-                        }
-                        div { class: "config-field",
-                            label { "Public IP address" }
-                            input {
-                                r#type: "text",
-                                value: "{pkdns_public_ip}",
-                                placeholder: "127.0.0.1",
-                                oninput: move |evt| {
-                                    let value = evt.value();
-                                    modify_config_form(config_state_public_ip, |form| {
-                                        form.pkdns_public_ip = value;
-                                    });
-                                }
-                            }
-                        }
-                        div { class: "config-field",
-                            label { "Public Pubky TLS port" }
-                            input {
-                                r#type: "text",
-                                value: "{pkdns_public_pubky_tls_port}",
-                                placeholder: "6287",
-                                oninput: move |evt| {
-                                    let value = evt.value();
-                                    modify_config_form(config_state_tls_port, |form| {
-                                        form.pkdns_public_pubky_tls_port = value;
-                                    });
-                                }
-                            }
-                        }
-                        div { class: "config-field",
-                            label { "Public ICANN HTTP port" }
-                            input {
-                                r#type: "text",
-                                value: "{pkdns_public_icann_http_port}",
-                                placeholder: "80",
-                                oninput: move |evt| {
-                                    let value = evt.value();
-                                    modify_config_form(config_state_http_port, |form| {
-                                        form.pkdns_public_icann_http_port = value;
-                                    });
-                                }
-                            }
-                        }
-                        div { class: "config-field",
-                            label { "ICANN domain" }
-                            input {
-                                r#type: "text",
-                                value: "{pkdns_icann_domain}",
-                                placeholder: "example.com",
-                                oninput: move |evt| {
-                                    let value = evt.value();
-                                    modify_config_form(config_state_icann_domain, |form| {
-                                        form.pkdns_icann_domain = value;
-                                    });
-                                }
-                            }
-                        }
-                        div { class: "config-field",
-                            label { "Logging level override" }
-                            input {
-                                r#type: "text",
-                                value: "{logging_level}",
-                                placeholder: "info",
-                                oninput: move |evt| {
-                                    let value = evt.value();
-                                    modify_config_form(config_state_logging, |form| {
-                                        form.logging_level = value;
-                                    });
-                                }
-                            }
-                        }
-                    }
-
-                    if let Some(feedback) = config_feedback.clone() {
-                        match feedback {
-                            ConfigFeedback::Saved => rsx! {
-                                div { class: "config-feedback success",
-                                    p { "Configuration saved. Restarting homeserver..." }
-                                }
-                            },
-                            ConfigFeedback::Error(message) => rsx! {
-                                div { class: "config-feedback error", "{message}" }
-                            },
-                        }
-                    }
-
-                    div { class: "button-row",
-                        button {
-                            class: "action",
-                            disabled: save_disabled,
-                            onclick: save_and_restart,
-                            "Save & Restart"
-                        }
-                    }
-                }
-
-                div { class: "button-row",
-                    button {
-                        class: "action",
-                        disabled: start_disabled,
-                        onclick: start_server,
-                        "Start server"
-                    }
-                    button {
-                        class: "action",
-                        disabled: stop_disabled,
-                        onclick: stop_server,
-                        "Stop server"
-                    }
+                    },
+                    ConfigFeedback::ValidationError(message) => rsx! {
+                        div { class: "config-feedback error", "{message}" }
+                    },
+                    ConfigFeedback::PersistenceError(message) => rsx! {
+                        div { class: "config-feedback error", "{message}" }
+                    },
                 }
             }
 
-            StatusPanel { status: status_snapshot }
-
-            div { class: "footnote",
-                "Tip: keep this window open while the homeserver is running. Close it to gracefully stop Pubky." }
-            div { class: "footnote",
-                "Power users can tweak advanced settings in ",
-                code { "{data_dir_value}/config.toml" },
-                "."
+            div { class: "button-row",
+                button {
+                    class: "action",
+                    disabled: save_disabled,
+                    onclick: move |_: MouseEvent| on_save_and_restart.call(()),
+                    "Save & Restart"
+                }
             }
+        }
+    }
+}
+
+#[component]
+fn SignupModePicker(
+    config_state: Signal<ConfigState, SyncStorage>,
+    selection: SignupMode,
+) -> Element {
+    rsx! {
+        div { class: "signup-mode-group",
+            span { "Signup mode" }
+            div { class: "signup-mode-options",
+                label { class: "signup-mode-option",
+                    input {
+                        r#type: "radio",
+                        name: "signup-mode",
+                        value: "token_required",
+                        checked: matches!(selection, SignupMode::TokenRequired),
+                        onchange: move |_| {
+                            modify_config_form(config_state, |form| {
+                                form.signup_mode = SignupMode::TokenRequired;
+                            });
+                        },
+                    }
+                    span { "Token required" }
+                }
+                label { class: "signup-mode-option",
+                    input {
+                        r#type: "radio",
+                        name: "signup-mode",
+                        value: "open",
+                        checked: matches!(selection, SignupMode::Open),
+                        onchange: move |_| {
+                            modify_config_form(config_state, |form| {
+                                form.signup_mode = SignupMode::Open;
+                            });
+                        },
+                    }
+                    span { "Open signup" }
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn ConfigField(
+    label: &'static str,
+    value: String,
+    placeholder: &'static str,
+    on_change: EventHandler<String>,
+) -> Element {
+    rsx! {
+        div { class: "config-field",
+            label { "{label}" }
+            input {
+                r#type: "text",
+                value: "{value}",
+                placeholder: "{placeholder}",
+                oninput: move |evt: FormEvent| on_change.call(evt.value()),
+            }
+        }
+    }
+}
+
+#[component]
+fn ActionButtons(
+    start_disabled: bool,
+    stop_disabled: bool,
+    on_start: EventHandler<()>,
+    on_stop: EventHandler<()>,
+) -> Element {
+    rsx! {
+        div { class: "button-row",
+            button {
+                class: "action",
+                disabled: start_disabled,
+                onclick: move |_: MouseEvent| on_start.call(()),
+                "Start server"
+            }
+            button {
+                class: "action",
+                disabled: stop_disabled,
+                onclick: move |_: MouseEvent| on_stop.call(()),
+                "Stop server"
+            }
+        }
+    }
+}
+
+#[component]
+fn FooterNotes(data_dir: String) -> Element {
+    rsx! {
+        div { class: "footnote",
+            "Tip: keep this window open while the homeserver is running. Close it to gracefully stop Pubky."
+        }
+        div { class: "footnote",
+            "Power users can tweak advanced settings in ",
+            code { "{data_dir}/config.toml" },
+            "."
         }
     }
 }

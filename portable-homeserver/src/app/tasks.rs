@@ -11,13 +11,16 @@ use tracing::error;
 use super::state::{NetworkProfile, RunningServer, ServerInfo, ServerStatus, StartSpec};
 
 /// Stop the currently running homeserver (if any) and transition the UI once the
-/// shutdown completes.
-pub(crate) fn stop_current_server<S1, S2>(
+/// shutdown completes. Optionally runs a callback after the shutdown finishes or
+/// immediately if there was nothing to stop.
+pub(crate) fn stop_current_server<S1, S2, F>(
     mut status_signal: Signal<ServerStatus, S1>,
     mut suite_signal: Signal<Option<RunningServer>, S2>,
+    on_stopped: Option<F>,
 ) where
     S1: Storage<SignalData<ServerStatus>> + 'static,
     S2: Storage<SignalData<Option<RunningServer>>> + 'static,
+    F: FnOnce() + 'static,
 {
     let should_stop = matches!(
         *status_signal.peek(),
@@ -27,6 +30,11 @@ pub(crate) fn stop_current_server<S1, S2>(
     if !should_stop {
         suite_signal.write().take();
         *status_signal.write() = ServerStatus::Idle;
+
+        if let Some(on_stopped) = on_stopped {
+            on_stopped();
+        }
+
         return;
     }
 
@@ -34,6 +42,7 @@ pub(crate) fn stop_current_server<S1, S2>(
 
     let maybe_server = suite_signal.write().take();
     let mut status_for_task = status_signal;
+    let mut on_stopped = on_stopped;
 
     spawn(async move {
         if let Some(server) = maybe_server {
@@ -46,6 +55,10 @@ pub(crate) fn stop_current_server<S1, S2>(
         }
 
         *status_for_task.write() = ServerStatus::Idle;
+
+        if let Some(on_stopped) = on_stopped.take() {
+            on_stopped();
+        }
     });
 }
 

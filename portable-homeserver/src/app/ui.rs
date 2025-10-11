@@ -147,8 +147,17 @@ fn ControlsPanel(
                                 state.feedback = Some(ConfigFeedback::Saved);
                             }
 
-                            stop_current_server(status_for_save, running_for_save);
-                            spawn_start_task(start_spec, status_for_save, running_for_save);
+                            stop_current_server(
+                                status_for_save,
+                                running_for_save,
+                                Some(move || {
+                                    spawn_start_task(
+                                        start_spec,
+                                        status_for_save,
+                                        running_for_save,
+                                    );
+                                }),
+                            );
                         }
                         Err(err) => {
                             let mut state = config_state_for_save.write();
@@ -175,7 +184,7 @@ fn ControlsPanel(
                     spawn_start_task(start_spec, status_for_start, running_for_start);
                 },
                 on_stop: move |_| {
-                    stop_current_server(status_for_stop, running_for_stop);
+                    stop_current_server(status_for_stop, running_for_stop, None::<fn()>);
                 }
             }
         }

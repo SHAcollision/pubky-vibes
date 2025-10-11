@@ -338,6 +338,11 @@ main {
     color: rgba(226, 232, 240, 0.7);
 }
 
+.field-error {
+    font-size: 0.8rem;
+    color: #fca5a5;
+}
+
 .form-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
@@ -572,15 +577,18 @@ fn App() -> Element {
     let storage_path = use_signal(|| String::from("/pub/"));
     let storage_body = use_signal(String::new);
     let storage_response = use_signal(String::new);
+    let storage_path_error = use_signal(|| None::<String>);
 
     let public_resource = use_signal(String::new);
     let public_response = use_signal(String::new);
+    let public_resource_error = use_signal(|| None::<String>);
 
     let http_method = use_signal(|| String::from("GET"));
     let http_url = use_signal(|| String::from("https://"));
     let http_headers = use_signal(String::new);
     let http_body = use_signal(String::new);
     let http_response = use_signal(String::new);
+    let http_url_error = use_signal(|| None::<String>);
 
     let show_logs_value = *show_logs.read();
     let show_logs_label = if show_logs_value {
@@ -659,8 +667,10 @@ fn App() -> Element {
                             storage_path,
                             storage_body,
                             storage_response,
+                            storage_path_error,
                             public_resource,
                             public_response,
+                            public_resource_error,
                             logs,
                         ),
                         Tab::Http => render_http_tab(
@@ -670,6 +680,7 @@ fn App() -> Element {
                             http_headers,
                             http_body,
                             http_response,
+                            http_url_error,
                             logs,
                         ),
                     }
@@ -1440,8 +1451,10 @@ fn render_storage_tab(
     storage_path: Signal<String>,
     storage_body: Signal<String>,
     storage_response: Signal<String>,
+    storage_path_error: Signal<Option<String>>,
     public_resource: Signal<String>,
     public_response: Signal<String>,
+    public_resource_error: Signal<Option<String>>,
     logs: Signal<Vec<LogEntry>>,
 ) -> Element {
     let path_value = { storage_path.read().clone() };
@@ -1449,31 +1462,39 @@ fn render_storage_tab(
     let session_response = { storage_response.read().clone() };
     let public_value = { public_resource.read().clone() };
     let public_resp = { public_response.read().clone() };
+    let path_error = { storage_path_error.read().clone() };
+    let public_error = { public_resource_error.read().clone() };
 
     let mut storage_path_binding = storage_path.clone();
     let mut storage_body_binding = storage_body.clone();
+    let mut storage_path_error_reset = storage_path_error.clone();
 
     let storage_session_get = session.clone();
     let storage_path_get = storage_path.clone();
     let storage_response_get = storage_response.clone();
     let storage_logs_get = logs.clone();
+    let mut storage_path_error_get = storage_path_error.clone();
 
     let storage_session_put = session.clone();
     let storage_path_put = storage_path.clone();
     let storage_body_put = storage_body.clone();
     let storage_response_put = storage_response.clone();
     let storage_logs_put = logs.clone();
+    let mut storage_path_error_put = storage_path_error.clone();
 
     let storage_session_delete = session.clone();
     let storage_path_delete = storage_path.clone();
     let storage_response_delete = storage_response.clone();
     let storage_logs_delete = logs.clone();
+    let mut storage_path_error_delete = storage_path_error.clone();
 
     let mut public_resource_binding = public_resource.clone();
+    let mut public_resource_error_reset = public_resource_error.clone();
     let public_resource_signal = public_resource.clone();
     let public_response_signal = public_response.clone();
     let public_logs = logs.clone();
     let public_network = network_mode.clone();
+    let mut public_resource_error_signal = public_resource_error.clone();
 
     rsx! {
         div { class: "tab-body",
@@ -1483,7 +1504,16 @@ fn render_storage_tab(
             div { class: "form-grid",
                 label {
                     "Absolute path"
-                    input { value: path_value.clone(), oninput: move |evt| storage_path_binding.set(evt.value()) }
+                    input {
+                        value: path_value.clone(),
+                        oninput: move |evt| {
+                            storage_path_binding.set(evt.value());
+                            storage_path_error_reset.set(None);
+                        }
+                    }
+                    if let Some(err) = path_error.as_ref() {
+                        span { class: "field-error", "{err}" }
+                    }
                 }
                 label {
                     "Body"
@@ -1493,11 +1523,15 @@ fn render_storage_tab(
             div { class: "small-buttons",
                 button { class: "action", onclick: move |_| {
                         if let Some(session) = storage_session_get.read().as_ref().cloned() {
-                            let path = storage_path_get.read().clone();
-                            if path.trim().is_empty() {
-                                push_log(storage_logs_get.clone(), LogLevel::Error, "Provide a path to GET");
+                            let raw_path = storage_path_get.read().clone();
+                            let trimmed_path = raw_path.trim();
+                            if trimmed_path.is_empty() {
+                                storage_path_error_get
+                                    .set(Some("Enter a path before sending a GET request.".to_string()));
                                 return;
                             }
+                            storage_path_error_get.set(None);
+                            let path = trimmed_path.to_string();
                             let mut response_signal = storage_response_get.clone();
                             let logs_task = storage_logs_get.clone();
                             spawn(async move {
@@ -1520,11 +1554,15 @@ fn render_storage_tab(
                 }
                 button { class: "action secondary", onclick: move |_| {
                         if let Some(session) = storage_session_put.read().as_ref().cloned() {
-                            let path = storage_path_put.read().clone();
-                            if path.trim().is_empty() {
-                                push_log(storage_logs_put.clone(), LogLevel::Error, "Provide a path to PUT");
+                            let raw_path = storage_path_put.read().clone();
+                            let trimmed_path = raw_path.trim();
+                            if trimmed_path.is_empty() {
+                                storage_path_error_put
+                                    .set(Some("Enter a path before sending a PUT request.".to_string()));
                                 return;
                             }
+                            storage_path_error_put.set(None);
+                            let path = trimmed_path.to_string();
                             let body = storage_body_put.read().clone();
                             let mut response_signal = storage_response_put.clone();
                             let logs_task = storage_logs_put.clone();
@@ -1548,11 +1586,15 @@ fn render_storage_tab(
                 }
                 button { class: "action secondary", onclick: move |_| {
                         if let Some(session) = storage_session_delete.read().as_ref().cloned() {
-                            let path = storage_path_delete.read().clone();
-                            if path.trim().is_empty() {
-                                push_log(storage_logs_delete.clone(), LogLevel::Error, "Provide a path to DELETE");
+                            let raw_path = storage_path_delete.read().clone();
+                            let trimmed_path = raw_path.trim();
+                            if trimmed_path.is_empty() {
+                                storage_path_error_delete
+                                    .set(Some("Enter a path before sending a DELETE request.".to_string()));
                                 return;
                             }
+                            storage_path_error_delete.set(None);
+                            let path = trimmed_path.to_string();
                             let mut response_signal = storage_response_delete.clone();
                             let logs_task = storage_logs_delete.clone();
                             spawn(async move {
@@ -1584,16 +1626,29 @@ fn render_storage_tab(
             div { class: "form-grid",
                 label {
                     "Resource"
-                    input { value: public_value.clone(), oninput: move |evt| public_resource_binding.set(evt.value()) }
+                    input {
+                        value: public_value.clone(),
+                        oninput: move |evt| {
+                            public_resource_binding.set(evt.value());
+                            public_resource_error_reset.set(None);
+                        }
+                    }
+                    if let Some(err) = public_error.as_ref() {
+                        span { class: "field-error", "{err}" }
+                    }
                 }
             }
             div { class: "small-buttons",
                 button { class: "action", onclick: move |_| {
                         let resource = public_resource_signal.read().clone();
-                        if resource.trim().is_empty() {
-                            push_log(public_logs.clone(), LogLevel::Error, "Provide a resource to fetch");
+                        let trimmed_resource = resource.trim();
+                        if trimmed_resource.is_empty() {
+                            public_resource_error_signal
+                                .set(Some("Enter a resource before fetching.".to_string()));
                             return;
                         }
+                        public_resource_error_signal.set(None);
+                        let resource = trimmed_resource.to_string();
                         let mut response_signal = public_response_signal.clone();
                         let logs_task = public_logs.clone();
                         let network = *public_network.read();
@@ -1629,6 +1684,7 @@ fn render_http_tab(
     http_headers: Signal<String>,
     http_body: Signal<String>,
     http_response: Signal<String>,
+    http_url_error: Signal<Option<String>>,
     logs: Signal<Vec<LogEntry>>,
 ) -> Element {
     let method_value = { http_method.read().clone() };
@@ -1636,11 +1692,13 @@ fn render_http_tab(
     let headers_value = { http_headers.read().clone() };
     let body_value = { http_body.read().clone() };
     let response_value = { http_response.read().clone() };
+    let url_error = { http_url_error.read().clone() };
 
     let mut method_binding = http_method.clone();
     let mut url_binding = http_url.clone();
     let mut headers_binding = http_headers.clone();
     let mut body_binding = http_body.clone();
+    let mut http_url_error_reset = http_url_error.clone();
 
     let request_method_signal = http_method.clone();
     let request_url_signal = http_url.clone();
@@ -1649,6 +1707,7 @@ fn render_http_tab(
     let request_response_signal = http_response.clone();
     let request_logs = logs.clone();
     let request_network = network_mode.clone();
+    let mut http_url_error_signal = http_url_error.clone();
 
     rsx! {
         div { class: "tab-body single-column",
@@ -1669,8 +1728,14 @@ fn render_http_tab(
                         "URL"
                         input {
                             value: url_value.clone(),
-                            oninput: move |evt| url_binding.set(evt.value()),
+                            oninput: move |evt| {
+                                url_binding.set(evt.value());
+                                http_url_error_reset.set(None);
+                            },
                             placeholder: "https:// or pubky://",
+                        }
+                        if let Some(err) = url_error.as_ref() {
+                            span { class: "field-error", "{err}" }
                         }
                     }
                 }
@@ -1697,22 +1762,33 @@ fn render_http_tab(
                 div { class: "small-buttons",
                     button { class: "action", onclick: move |_| {
                             let method = request_method_signal.read().clone();
-                            let url = request_url_signal.read().clone();
-                            if url.trim().is_empty() {
-                                push_log(request_logs.clone(), LogLevel::Error, "Provide a URL");
+                            let raw_url = request_url_signal.read().clone();
+                            let request_url_string = raw_url.trim().to_string();
+                            if request_url_string.is_empty() {
+                                http_url_error_signal
+                                    .set(Some("Enter a URL before sending the request.".to_string()));
                                 return;
                             }
+                            let parsed_url = match Url::parse(&request_url_string) {
+                                Ok(url) => url,
+                                Err(err) => {
+                                    http_url_error_signal.set(Some(format!(
+                                        "Enter a valid URL before sending the request: {err}"
+                                    )));
+                                    return;
+                                }
+                            };
+                            http_url_error_signal.set(None);
                             let headers = request_headers_signal.read().clone();
                             let body = request_body_signal.read().clone();
                             let mut response_signal = request_response_signal.clone();
                             let logs_task = request_logs.clone();
                             let network = *request_network.read();
+                            let url_display = request_url_string.clone();
                             spawn(async move {
                                 let result = async move {
                                     let method_parsed = Method::from_bytes(method.as_bytes())
                                         .map_err(|e| anyhow!("Invalid HTTP method: {e}"))?;
-                                    let parsed_url = Url::parse(&url)?;
-                                    let url_display = parsed_url.to_string();
                                     let client = match network {
                                         NetworkMode::Mainnet => PubkyHttpClient::new()?,
                                         NetworkMode::Testnet => PubkyHttpClient::testnet()?,

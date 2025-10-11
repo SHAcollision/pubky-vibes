@@ -171,8 +171,7 @@ pub(crate) fn App() -> Element {
                     alt: "Pubky logo",
                 }
                 div { class: "hero-content",
-                    h1 { "Portable Pubky Homeserver" }
-                    p { "It's your data, bring it with you." }
+                    h1 { "Homeserver" }
                 }
             }
 

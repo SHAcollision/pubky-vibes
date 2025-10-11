@@ -52,15 +52,26 @@ pub fn render_sessions_tab(
                 div { class: "form-grid",
                     label {
                         "Homeserver public key"
-                        input { value: homeserver_value, oninput: move |evt| homeserver_binding.set(evt.value()) }
+                        input {
+                            value: homeserver_value,
+                            oninput: move |evt| homeserver_binding.set(evt.value()),
+                            title: "Base32 public key of the homeserver used by PubkySession::signup",
+                        }
                     }
                     label {
                         "Signup code (optional)"
-                        input { value: signup_value, oninput: move |evt| signup_binding.set(evt.value()) }
+                        input {
+                            value: signup_value,
+                            oninput: move |evt| signup_binding.set(evt.value()),
+                            title: "Optional invitation code passed to PubkySession::signup",
+                        }
                     }
                 }
                 div { class: "small-buttons",
-                    button { class: "action", onclick: move |_| {
+                    button {
+                        class: "action",
+                        title: "Call signer.signup to create a session bound to the homeserver",
+                        onclick: move |_| {
                         if let Some(kp) = signup_keypair.read().as_ref().cloned() {
                             let homeserver = signup_homeserver.read().clone();
                             if homeserver.trim().is_empty() {
@@ -103,7 +114,10 @@ pub fn render_sessions_tab(
                     },
                     "Sign up"
                     }
-                    button { class: "action secondary", onclick: move |_| {
+                    button {
+                        class: "action secondary",
+                        title: "Invoke signer.signin to obtain a root Pubky session",
+                        onclick: move |_| {
                         if let Some(kp) = signin_keypair.read().as_ref().cloned() {
                             let maybe_pubky = { signin_pubky_state.read().facade() };
                             let Some(pubky) = maybe_pubky else {
@@ -143,7 +157,10 @@ pub fn render_sessions_tab(
                     },
                     "Sign in (root)"
                     }
-                    button { class: "action secondary", onclick: move |_| {
+                    button {
+                        class: "action secondary",
+                        title: "Use session.revalidate to confirm the access token is still accepted",
+                        onclick: move |_| {
                         if let Some(session) = revalidate_session_signal.read().as_ref().cloned() {
                             let mut session_signal = revalidate_session_signal.clone();
                             let mut details_signal = revalidate_details_signal.clone();
@@ -168,7 +185,10 @@ pub fn render_sessions_tab(
                     },
                     "Revalidate"
                     }
-                    button { class: "action secondary", onclick: move |_| {
+                    button {
+                        class: "action secondary",
+                        title: "Call PubkySession::signout to revoke the session token",
+                        onclick: move |_| {
                         let mut session_signal = signout_session_signal.clone();
                         let maybe_session = {
                             let mut guard = session_signal.write();

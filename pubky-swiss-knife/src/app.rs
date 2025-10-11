@@ -230,6 +230,7 @@ pub fn App() -> Element {
                         div { class: "small-buttons",
                             button {
                                 class: "action",
+                                title: "Retry building the Pubky facade using pubky::PubkyClient::builder defaults",
                                 onclick: move |_| queue_pubky_build(pubky_facade, network_mode, retry_network, true),
                                 "Retry"
                             }
@@ -240,6 +241,7 @@ pub fn App() -> Element {
             div { class: "activity-drawer",
                 button {
                     class: "activity-button",
+                    title: "Toggle the real-time log of each Pubky SDK call performed in this tool",
                     onclick: move |_| {
                         let next = !*toggle_logs_signal.read();
                         toggle_logs_signal.set(next);

@@ -149,10 +149,8 @@ pub(crate) fn persist_config_form(
 
     apply_config_form(form, &mut config)?;
 
-    if let Some(previous) = baseline {
-        if previous == config {
-            return Ok(ConfigPersistOutcome::Unchanged);
-        }
+    if let Some(previous) = baseline && previous == config {
+        return Ok(ConfigPersistOutcome::Unchanged);
     }
 
     fs::create_dir_all(&dir_path)

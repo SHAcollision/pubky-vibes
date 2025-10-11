@@ -45,13 +45,13 @@ pub(crate) fn stop_current_server<S1, S2, F>(
     let mut on_stopped = on_stopped;
 
     spawn(async move {
-        if let Some(server) = maybe_server {
-            if let Err(err) = shutdown_running_server(server).await {
-                error!(?err, "failed to stop homeserver");
-                *status_for_task.write() =
-                    ServerStatus::Error(format!("Failed to stop the homeserver cleanly: {err}"));
-                return;
-            }
+        if let Some(server) = maybe_server
+            && let Err(err) = shutdown_running_server(server).await
+        {
+            error!(?err, "failed to stop homeserver");
+            *status_for_task.write() =
+                ServerStatus::Error(format!("Failed to stop the homeserver cleanly: {err}"));
+            return;
         }
 
         *status_for_task.write() = ServerStatus::Idle;

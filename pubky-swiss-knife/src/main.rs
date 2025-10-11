@@ -619,7 +619,7 @@ fn App() -> Element {
                             src: "https://pubky.org/pubky-core-logo.svg",
                             alt: "Pubky Core logotype",
                         }
-                        h1 { "Pubky Swiss Knife" }
+                        h1 { "Swiss Knife" }
                     }
                     p { class: "subtitle", "A tidy cockpit for every Pubky homeserver workflow." }
                     div { class: "header-badges",

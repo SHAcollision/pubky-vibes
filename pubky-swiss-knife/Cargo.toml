@@ -10,7 +10,6 @@ crate-type = ["cdylib", "rlib"]
 anyhow = "1"
 base64 = "0.22"
 dioxus = { version = "0.7.0-rc.1", features = ["desktop", "mobile"] }
-dioxus-desktop = "0.7.0-rc.1"
 mimalloc = "0.1"
 pubky = "0.6.0-rc.6"
 url = "2.5"
@@ -22,4 +21,5 @@ tokio = { version = "1", features = ["rt", "rt-multi-thread"] }
 tempfile = "3"
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
+dioxus-desktop = "0.7.0-rc.1"
 rfd = "0.14"

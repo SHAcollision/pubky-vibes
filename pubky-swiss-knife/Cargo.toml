@@ -3,18 +3,23 @@ name = "pubky-swiss-knife"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [dependencies]
 anyhow = "1"
 base64 = "0.22"
-dioxus = { version = "0.7.0-rc.1", features = ["desktop"] }
+dioxus = { version = "0.7.0-rc.1", features = ["desktop", "mobile"] }
 dioxus-desktop = "0.7.0-rc.1"
 mimalloc = "0.1"
 pubky = "0.6.0-rc.6"
 url = "2.5"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 qrcode = "0.13"
-rfd = "0.14"
 tokio = { version = "1", features = ["rt", "rt-multi-thread"] }
 
 [dev-dependencies]
 tempfile = "3"
+
+[target.'cfg(not(target_os = "android"))'.dependencies]
+rfd = "0.14"

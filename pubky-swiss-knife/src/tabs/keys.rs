@@ -2,9 +2,9 @@ use anyhow::Result;
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use dioxus::prelude::*;
 use pubky::Keypair;
-use rfd::FileDialog;
 use std::path::PathBuf;
 
+use crate::utils::file_dialog;
 use crate::utils::logging::{LogEntry, LogLevel, push_log};
 use crate::utils::recovery::{
     decode_secret_key, load_keypair_from_recovery, normalize_pkarr_path,
@@ -28,11 +28,6 @@ pub fn render_keys_tab(
     let secret_value = { secret_input.read().clone() };
     let recovery_path_value = { recovery_path.read().clone() };
     let recovery_pass_value = { recovery_passphrase.read().clone() };
-    let recovery_path_display = if recovery_path_value.trim().is_empty() {
-        "No file selected".to_string()
-    } else {
-        recovery_path_value.clone()
-    };
 
     let mut generate_secret_input = secret_input.clone();
     let mut generate_keypair = keypair.clone();
@@ -60,6 +55,8 @@ pub fn render_keys_tab(
     let mut secret_input_binding = secret_input.clone();
     let mut recovery_pass_binding = recovery_passphrase.clone();
     let mut choose_recovery_path_signal = recovery_path.clone();
+    let mut recovery_path_binding = recovery_path.clone();
+    let choose_logs = logs.clone();
 
     rsx! {
         div { class: "tab-body tight",
@@ -118,12 +115,23 @@ pub fn render_keys_tab(
                     label {
                         "Recovery file path"
                         div { class: "file-picker-row",
-                            span { class: "file-path-display", "{recovery_path_display}" }
+                            input {
+                                class: "file-path-display",
+                                value: recovery_path_value.clone(),
+                                oninput: move |evt| recovery_path_binding.set(evt.value()),
+                                placeholder: "Enter recovery file path",
+                            }
                             button {
                                 class: "action secondary",
                                 onclick: move |_| {
-                                    if let Some(path) = FileDialog::new().pick_file() {
+                                    if let Some(path) = file_dialog::pick_file() {
                                         choose_recovery_path_signal.set(path.display().to_string());
+                                    } else if cfg!(target_os = "android") {
+                                        push_log(
+                                            choose_logs.clone(),
+                                            LogLevel::Info,
+                                            "File picker unavailable on Android. Enter a path manually.",
+                                        );
                                     }
                                 },
                                 "Choose file"
@@ -141,11 +149,23 @@ pub fn render_keys_tab(
                             let passphrase = load_pass_signal.read().clone();
                             let mut immediate_path_signal = load_path_signal.clone();
                             let chosen_path = if raw_path.trim().is_empty() {
-                                FileDialog::new().pick_file().map(|path| {
-                                    let display = path.display().to_string();
-                                    immediate_path_signal.set(display.clone());
-                                    display
-                                })
+                                match file_dialog::pick_file() {
+                                    Some(path) => {
+                                        let display = path.display().to_string();
+                                        immediate_path_signal.set(display.clone());
+                                        Some(display)
+                                    }
+                                    None => {
+                                        if cfg!(target_os = "android") {
+                                            push_log(
+                                                load_logs.clone(),
+                                                LogLevel::Info,
+                                                "File picker unavailable on Android. Enter a path manually.",
+                                            );
+                                        }
+                                        None
+                                    }
+                                }
                             } else {
                                 Some(raw_path.clone())
                             };
@@ -192,11 +212,23 @@ pub fn render_keys_tab(
                                 let raw_path = save_path_signal.read().clone();
                                 let mut immediate_path_signal = save_path_signal.clone();
                                 let chosen_path = if raw_path.trim().is_empty() {
-                                    FileDialog::new().save_file().map(|path| {
-                                        let display = path.display().to_string();
-                                        immediate_path_signal.set(display.clone());
-                                        display
-                                    })
+                                    match file_dialog::save_file() {
+                                        Some(path) => {
+                                            let display = path.display().to_string();
+                                            immediate_path_signal.set(display.clone());
+                                            Some(display)
+                                        }
+                                        None => {
+                                            if cfg!(target_os = "android") {
+                                                push_log(
+                                                    save_logs.clone(),
+                                                    LogLevel::Info,
+                                                    "File picker unavailable on Android. Enter a path manually.",
+                                                );
+                                            }
+                                            None
+                                        }
+                                    }
                                 } else {
                                     Some(raw_path.clone())
                                 };

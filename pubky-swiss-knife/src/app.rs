@@ -137,59 +137,37 @@ pub fn App() -> Element {
                         TabButton { tab, active_tab: active_tab.clone() }
                     }
                 }
-                div { class: "panel",
-                    match *active_tab.read() {
-                        Tab::Keys => render_keys_tab(
-                            keypair,
-                            secret_input,
-                            recovery_path,
-                            recovery_passphrase,
-                            logs,
-                        ),
-                        Tab::Tokens => render_tokens_tab(keypair, token_caps_input, token_output, logs),
-                        Tab::Sessions => render_sessions_tab(
-                            network_mode,
-                            keypair,
-                            session,
-                            session_details,
-                            homeserver_input,
-                            signup_code_input,
-                            logs,
-                        ),
-                        Tab::Auth => render_auth_tab(
-                            network_mode,
-                            keypair,
-                            session,
-                            session_details,
-                            auth_caps_input,
-                            auth_relay_input,
-                            auth_url_output,
-                            auth_qr_data,
-                            auth_status,
-                            auth_flow,
-                            auth_request_input,
-                            logs,
-                        ),
-                        Tab::Storage => render_storage_tab(
-                            network_mode,
-                            session,
-                            storage_path,
-                            storage_body,
-                            storage_response,
-                            public_resource,
-                            public_response,
-                            logs,
-                        ),
-                        Tab::Http => render_http_tab(
-                            network_mode,
-                            http_method,
-                            http_url,
-                            http_headers,
-                            http_body,
-                            http_response,
-                            logs,
-                        ),
-                    }
+                TabPanel {
+                    active_tab: active_tab.clone(),
+                    network_mode: network_mode.clone(),
+                    keypair: keypair.clone(),
+                    secret_input: secret_input.clone(),
+                    recovery_path: recovery_path.clone(),
+                    recovery_passphrase: recovery_passphrase.clone(),
+                    token_caps_input: token_caps_input.clone(),
+                    token_output: token_output.clone(),
+                    session: session.clone(),
+                    session_details: session_details.clone(),
+                    homeserver_input: homeserver_input.clone(),
+                    signup_code_input: signup_code_input.clone(),
+                    auth_caps_input: auth_caps_input.clone(),
+                    auth_relay_input: auth_relay_input.clone(),
+                    auth_url_output: auth_url_output.clone(),
+                    auth_qr_data: auth_qr_data.clone(),
+                    auth_status: auth_status.clone(),
+                    auth_flow: auth_flow.clone(),
+                    auth_request_input: auth_request_input.clone(),
+                    storage_path: storage_path.clone(),
+                    storage_body: storage_body.clone(),
+                    storage_response: storage_response.clone(),
+                    public_resource: public_resource.clone(),
+                    public_response: public_response.clone(),
+                    http_method: http_method.clone(),
+                    http_url: http_url.clone(),
+                    http_headers: http_headers.clone(),
+                    http_body: http_body.clone(),
+                    http_response: http_response.clone(),
+                    logs: logs.clone(),
                 }
             }
             div { class: "activity-drawer",
@@ -220,5 +198,99 @@ pub fn App() -> Element {
                 }
             }
         }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+#[component]
+fn TabPanel(
+    active_tab: Signal<Tab>,
+    network_mode: Signal<NetworkMode>,
+    keypair: Signal<Option<Keypair>>,
+    secret_input: Signal<String>,
+    recovery_path: Signal<String>,
+    recovery_passphrase: Signal<String>,
+    token_caps_input: Signal<String>,
+    token_output: Signal<String>,
+    session: Signal<Option<PubkySession>>,
+    session_details: Signal<String>,
+    homeserver_input: Signal<String>,
+    signup_code_input: Signal<String>,
+    auth_caps_input: Signal<String>,
+    auth_relay_input: Signal<String>,
+    auth_url_output: Signal<String>,
+    auth_qr_data: Signal<Option<String>>,
+    auth_status: Signal<String>,
+    auth_flow: Signal<Option<PubkyAuthFlow>>,
+    auth_request_input: Signal<String>,
+    storage_path: Signal<String>,
+    storage_body: Signal<String>,
+    storage_response: Signal<String>,
+    public_resource: Signal<String>,
+    public_response: Signal<String>,
+    http_method: Signal<String>,
+    http_url: Signal<String>,
+    http_headers: Signal<String>,
+    http_body: Signal<String>,
+    http_response: Signal<String>,
+    logs: Signal<Vec<LogEntry>>,
+) -> Element {
+    let selection = *active_tab.read();
+
+    let panel = match selection {
+        Tab::Keys => render_keys_tab(
+            keypair,
+            secret_input,
+            recovery_path,
+            recovery_passphrase,
+            logs,
+        ),
+        Tab::Tokens => render_tokens_tab(keypair, token_caps_input, token_output, logs),
+        Tab::Sessions => render_sessions_tab(
+            network_mode,
+            keypair,
+            session,
+            session_details,
+            homeserver_input,
+            signup_code_input,
+            logs,
+        ),
+        Tab::Auth => render_auth_tab(
+            network_mode,
+            keypair,
+            session,
+            session_details,
+            auth_caps_input,
+            auth_relay_input,
+            auth_url_output,
+            auth_qr_data,
+            auth_status,
+            auth_flow,
+            auth_request_input,
+            logs,
+        ),
+        Tab::Storage => render_storage_tab(
+            network_mode,
+            session,
+            storage_path,
+            storage_body,
+            storage_response,
+            public_resource,
+            public_response,
+            logs,
+        ),
+        Tab::Http => render_http_tab(
+            network_mode,
+            http_method,
+            http_url,
+            http_headers,
+            http_body,
+            http_response,
+            logs,
+        ),
+    };
+
+    rsx! {
+        div { class: "panel", {panel} }
     }
 }

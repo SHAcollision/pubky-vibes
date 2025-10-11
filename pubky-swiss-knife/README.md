@@ -86,6 +86,10 @@ A power-user console for issuing low-level Pubky or HTTPS requests:
 
 All activity is appended to the "Activity" feed with color-coded status chips (info, success, error) to make debugging easier during hackathon development. The feed now lives in a floating drawer anchored to the lower-right corner—tap **Show activity** when you need insight and hide it again to keep the fixed-size workspace tidy.
 
+## Cross-platform builds
+
+The release pipeline cross-compiles this crate from Ubuntu using `cargo-zigbuild`. You can reproduce those builds locally by following the [cross-building guide](../docs/cross-building.md).
+
 ## License
 
 MIT

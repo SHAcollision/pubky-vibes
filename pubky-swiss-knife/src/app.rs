@@ -8,6 +8,7 @@ use crate::tabs::{
     render_tokens_tab,
 };
 use crate::utils::logging::LogEntry;
+use crate::utils::pubky::{PubkyFacadeState, PubkyFacadeStatus};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum NetworkMode {
@@ -65,6 +66,9 @@ pub fn App() -> Element {
     let logs = use_signal(Vec::<LogEntry>::new);
     let show_logs = use_signal(|| false);
 
+    let pubky_facade = use_signal(|| PubkyFacadeState::loading(NetworkMode::Mainnet));
+    let mut pubky_bootstrapped = use_signal(|| false);
+
     let keypair = use_signal(|| Option::<Keypair>::None);
     let secret_input = use_signal(String::new);
     let recovery_path = use_signal(String::new);
@@ -99,6 +103,15 @@ pub fn App() -> Element {
     let http_body = use_signal(String::new);
     let http_response = use_signal(String::new);
 
+    if !*pubky_bootstrapped.read() {
+        pubky_bootstrapped.set(true);
+        let initial_network = *network_mode.read();
+        queue_pubky_build(pubky_facade, network_mode, initial_network, true);
+    }
+
+    let pubky_state_snapshot = { pubky_facade.read().clone() };
+    let retry_network = pubky_state_snapshot.network;
+
     let show_logs_value = *show_logs.read();
     let show_logs_label = if show_logs_value {
         "Hide activity"
@@ -126,7 +139,13 @@ pub fn App() -> Element {
                 div { class: "header-controls",
                     div { class: "network-toggle",
                         for mode in NetworkMode::ALL {
-                            NetworkToggleOption { network_mode: network_mode.clone(), mode }
+                            NetworkToggleOption {
+                                network_mode: network_mode.clone(),
+                                mode,
+                                on_select: move |selected| {
+                                    queue_pubky_build(pubky_facade, network_mode, selected, false);
+                                }
+                            }
                         }
                     }
                 }
@@ -137,37 +156,85 @@ pub fn App() -> Element {
                         TabButton { tab, active_tab: active_tab.clone() }
                     }
                 }
-                TabPanel {
-                    active_tab: active_tab.clone(),
-                    network_mode: network_mode.clone(),
-                    keypair: keypair.clone(),
-                    secret_input: secret_input.clone(),
-                    recovery_path: recovery_path.clone(),
-                    recovery_passphrase: recovery_passphrase.clone(),
-                    token_caps_input: token_caps_input.clone(),
-                    token_output: token_output.clone(),
-                    session: session.clone(),
-                    session_details: session_details.clone(),
-                    homeserver_input: homeserver_input.clone(),
-                    signup_code_input: signup_code_input.clone(),
-                    auth_caps_input: auth_caps_input.clone(),
-                    auth_relay_input: auth_relay_input.clone(),
-                    auth_url_output: auth_url_output.clone(),
-                    auth_qr_data: auth_qr_data.clone(),
-                    auth_status: auth_status.clone(),
-                    auth_flow: auth_flow.clone(),
-                    auth_request_input: auth_request_input.clone(),
-                    storage_path: storage_path.clone(),
-                    storage_body: storage_body.clone(),
-                    storage_response: storage_response.clone(),
-                    public_resource: public_resource.clone(),
-                    public_response: public_response.clone(),
-                    http_method: http_method.clone(),
-                    http_url: http_url.clone(),
-                    http_headers: http_headers.clone(),
-                    http_body: http_body.clone(),
-                    http_response: http_response.clone(),
-                    logs: logs.clone(),
+                div { class: "panel",
+                    match *active_tab.read() {
+                        Tab::Keys => render_keys_tab(
+                            keypair,
+                            secret_input,
+                            recovery_path,
+                            recovery_passphrase,
+                            logs,
+                        ),
+                        Tab::Tokens => render_tokens_tab(keypair, token_caps_input, token_output, logs),
+                        Tab::Sessions => render_sessions_tab(
+                            pubky_facade,
+                            keypair,
+                            session,
+                            session_details,
+                            homeserver_input,
+                            signup_code_input,
+                            logs,
+                        ),
+                        Tab::Auth => render_auth_tab(
+                            pubky_facade,
+                            keypair,
+                            session,
+                            session_details,
+                            auth_caps_input,
+                            auth_relay_input,
+                            auth_url_output,
+                            auth_qr_data,
+                            auth_status,
+                            auth_flow,
+                            auth_request_input,
+                            logs,
+                        ),
+                        Tab::Storage => render_storage_tab(
+                            pubky_facade,
+                            session,
+                            storage_path,
+                            storage_body,
+                            storage_response,
+                            public_resource,
+                            public_response,
+                            logs,
+                        ),
+                        Tab::Http => render_http_tab(
+                            network_mode,
+                            http_method,
+                            http_url,
+                            http_headers,
+                            http_body,
+                            http_response,
+                            logs,
+                        ),
+                    }
+                }
+            }
+            if pubky_state_snapshot.is_loading() {
+                div { class: "pubky-overlay",
+                    div { class: "pubky-spinner" }
+                    p {
+                        class: "pubky-overlay-text",
+                        {format!(
+                            "Initializing Pubky facade for {}...",
+                            pubky_state_snapshot.network.label()
+                        )}
+                    }
+                }
+            } else if let Some(message) = pubky_state_snapshot.error_message() {
+                div { class: "pubky-overlay pubky-overlay-error",
+                    div { class: "pubky-overlay-panel",
+                        h3 { "Failed to initialize Pubky" }
+                        p { class: "pubky-overlay-text", "{message}" }
+                        div { class: "small-buttons",
+                            button {
+                                class: "action",
+                                onclick: move |_| queue_pubky_build(pubky_facade, network_mode, retry_network, true),
+                                "Retry"
+                            }
+                        }
+                    }
                 }
             }
             div { class: "activity-drawer",
@@ -201,96 +268,43 @@ pub fn App() -> Element {
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-#[component]
-fn TabPanel(
-    active_tab: Signal<Tab>,
-    network_mode: Signal<NetworkMode>,
-    keypair: Signal<Option<Keypair>>,
-    secret_input: Signal<String>,
-    recovery_path: Signal<String>,
-    recovery_passphrase: Signal<String>,
-    token_caps_input: Signal<String>,
-    token_output: Signal<String>,
-    session: Signal<Option<PubkySession>>,
-    session_details: Signal<String>,
-    homeserver_input: Signal<String>,
-    signup_code_input: Signal<String>,
-    auth_caps_input: Signal<String>,
-    auth_relay_input: Signal<String>,
-    auth_url_output: Signal<String>,
-    auth_qr_data: Signal<Option<String>>,
-    auth_status: Signal<String>,
-    auth_flow: Signal<Option<PubkyAuthFlow>>,
-    auth_request_input: Signal<String>,
-    storage_path: Signal<String>,
-    storage_body: Signal<String>,
-    storage_response: Signal<String>,
-    public_resource: Signal<String>,
-    public_response: Signal<String>,
-    http_method: Signal<String>,
-    http_url: Signal<String>,
-    http_headers: Signal<String>,
-    http_body: Signal<String>,
-    http_response: Signal<String>,
-    logs: Signal<Vec<LogEntry>>,
-) -> Element {
-    let selection = *active_tab.read();
-
-    let panel = match selection {
-        Tab::Keys => render_keys_tab(
-            keypair,
-            secret_input,
-            recovery_path,
-            recovery_passphrase,
-            logs,
-        ),
-        Tab::Tokens => render_tokens_tab(keypair, token_caps_input, token_output, logs),
-        Tab::Sessions => render_sessions_tab(
-            network_mode,
-            keypair,
-            session,
-            session_details,
-            homeserver_input,
-            signup_code_input,
-            logs,
-        ),
-        Tab::Auth => render_auth_tab(
-            network_mode,
-            keypair,
-            session,
-            session_details,
-            auth_caps_input,
-            auth_relay_input,
-            auth_url_output,
-            auth_qr_data,
-            auth_status,
-            auth_flow,
-            auth_request_input,
-            logs,
-        ),
-        Tab::Storage => render_storage_tab(
-            network_mode,
-            session,
-            storage_path,
-            storage_body,
-            storage_response,
-            public_resource,
-            public_response,
-            logs,
-        ),
-        Tab::Http => render_http_tab(
-            network_mode,
-            http_method,
-            http_url,
-            http_headers,
-            http_body,
-            http_response,
-            logs,
-        ),
-    };
-
-    rsx! {
-        div { class: "panel", {panel} }
+fn queue_pubky_build(
+    pubky_state: Signal<PubkyFacadeState>,
+    network_signal: Signal<NetworkMode>,
+    target: NetworkMode,
+    force: bool,
+) {
+    if !force {
+        let current = { pubky_state.read().clone() };
+        if current.network == target {
+            match current.status {
+                PubkyFacadeStatus::Ready(_) | PubkyFacadeStatus::Loading => return,
+                PubkyFacadeStatus::Error(_) => {}
+            }
+        }
     }
+
+    {
+        let mut setter = pubky_state;
+        setter.set(PubkyFacadeState::loading(target));
+    }
+
+    let mut setter = pubky_state;
+    spawn({
+        let network_signal = network_signal;
+        async move {
+            match crate::utils::pubky::build_pubky_facade(target).await {
+                Ok(pubky) => {
+                    if *network_signal.read() == target {
+                        setter.set(PubkyFacadeState::ready(target, pubky));
+                    }
+                }
+                Err(err) => {
+                    if *network_signal.read() == target {
+                        setter.set(PubkyFacadeState::error(target, err.to_string()));
+                    }
+                }
+            }
+        }
+    });
 }

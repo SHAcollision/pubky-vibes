@@ -1,0 +1,109 @@
+name: Portable apps pre-release builds
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_TARGET_DIR: target
+    steps:
+      - name: Check out sources
+        uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            pkg-config \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libglib2.0-dev \
+            libxdo-dev \
+            libssl-dev \
+            mingw-w64 \
+            zip \
+            unzip
+
+      - name: Install Zig
+        uses: mlugg/setup-zig@v1
+        with:
+          version: 0.12.1
+
+      - name: Install Rust targets
+        run: |
+          rustup target add \
+            x86_64-unknown-linux-gnu \
+            x86_64-pc-windows-gnu \
+            x86_64-apple-darwin
+
+      - name: Install cargo-zigbuild
+        run: cargo install --locked cargo-zigbuild
+
+      - name: Download macOS SDK
+        run: |
+          set -euxo pipefail
+          sdk_version=11.3
+          sdk_archive="MacOSX${sdk_version}.sdk.tar.xz"
+          sdk_url="https://github.com/phracker/MacOSX-SDKs/releases/download/${sdk_version}/${sdk_archive}"
+          curl -L "$sdk_url" -o "$RUNNER_TEMP/${sdk_archive}"
+          mkdir -p "$RUNNER_TEMP/macos-sdk"
+          tar -C "$RUNNER_TEMP/macos-sdk" -xf "$RUNNER_TEMP/${sdk_archive}"
+          rm "$RUNNER_TEMP/${sdk_archive}"
+          echo "SDKROOT=$RUNNER_TEMP/macos-sdk/MacOSX${sdk_version}.sdk" >> "$GITHUB_ENV"
+          echo "MACOSX_DEPLOYMENT_TARGET=11.0" >> "$GITHUB_ENV"
+
+      - name: Build release binaries
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          linux_target=x86_64-unknown-linux-gnu
+          cross_targets=(x86_64-pc-windows-gnu x86_64-apple-darwin)
+          crates=(portable-homeserver pubky-swiss-knife)
+          for crate in "${crates[@]}"; do
+            manifest="${crate}/Cargo.toml"
+            bin_name=$(basename "$crate")
+            echo "Building $crate for ${linux_target}"
+            cargo build --manifest-path "$manifest" --release --target "$linux_target"
+            tar -C "target/${linux_target}/release" -czf "dist/${bin_name}-${linux_target}.tar.gz" "$bin_name"
+
+            for target in "${cross_targets[@]}"; do
+              echo "Building $crate for $target"
+              cargo zigbuild --manifest-path "$manifest" --release --target "$target"
+              ext=""
+              if [[ "$target" == *"windows"* ]]; then
+                ext=".exe"
+              fi
+              tar -C "target/${target}/release" -czf "dist/${bin_name}-${target}.tar.gz" "${bin_name}${ext}"
+            done
+          done
+          ls -lh dist
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: portable-apps-${{ github.run_number }}
+          path: dist/*.tar.gz
+
+      - name: Prepare release metadata
+        id: release_meta
+        run: |
+          tag="pre-release-${GITHUB_RUN_NUMBER}"
+          name="Portable apps pre-release ${GITHUB_RUN_NUMBER}"
+          echo "tag_name=$tag" >> "$GITHUB_OUTPUT"
+          echo "release_name=$name" >> "$GITHUB_OUTPUT"
+
+      - name: Publish pre-release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_meta.outputs.tag_name }}
+          name: ${{ steps.release_meta.outputs.release_name }}
+          prerelease: true
+          generate_release_notes: true
+          files: dist/*.tar.gz

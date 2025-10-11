@@ -322,6 +322,66 @@ button.secondary {
     gap: 0.75rem;
 }
 
+.pubky-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.25rem;
+    padding: 2rem;
+    background: rgba(2, 6, 23, 0.82);
+    backdrop-filter: blur(8px);
+    z-index: 20;
+    text-align: center;
+}
+
+.pubky-overlay-error {
+    background: linear-gradient(135deg, rgba(2, 6, 23, 0.9), rgba(190, 24, 93, 0.18));
+}
+
+.pubky-overlay-panel {
+    background: rgba(15, 23, 42, 0.95);
+    border: 1px solid rgba(248, 113, 113, 0.35);
+    border-radius: 1.1rem;
+    padding: 1.75rem 2rem;
+    box-shadow: 0 18px 48px rgba(120, 23, 49, 0.45);
+    max-width: 420px;
+}
+
+.pubky-overlay-panel h3 {
+    margin: 0 0 0.75rem 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #fecdd3;
+}
+
+.pubky-overlay-text {
+    margin: 0;
+    font-size: 0.95rem;
+    color: rgba(226, 232, 240, 0.88);
+}
+
+.pubky-spinner {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: 4px solid rgba(148, 163, 184, 0.25);
+    border-top-color: #60a5fa;
+    animation: pubky-spin 1s linear infinite;
+    box-shadow: 0 0 28px rgba(59, 130, 246, 0.35);
+}
+
+@keyframes pubky-spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 .activity-button {
     padding: 0.55rem 0.9rem;
     border-radius: 999px;

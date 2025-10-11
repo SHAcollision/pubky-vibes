@@ -9,7 +9,7 @@
 - Make your client test your code before contributing.
 - No IDE, no manual edit on commits. No human code allowed.
 - Use voice whenever possible. Go on a walk or for lunch while prompting, no prompting from your desk.
-- Add shareable links with prompts and agent logs for example [Codex](https://chatgpt.com/codex/tasks/task_e_68e97ff5b43083298ebefc7e6980c4ef)
+- Add shareable links with your prompting and agent logs for others to learn. For example, links like this one: [Codex](https://chatgpt.com/codex/tasks/task_e_68e97ff5b43083298ebefc7e6980c4ef)
 - Keep repo AI friendly. Tell your AI to avoid committing `package-lock.json` or `Cargo.lock`.
 
 ## Projects
@@ -22,7 +22,7 @@ A multi-tool for anything Pubky. Built using the Pubky rust SDK and Dioxus. [Ini
 ### [Portable Homeserver](portable-homeserver)
 
 Embedded multiplatform mainnet and testnet homeserver. Built using the Pubky rust SDK and Dioxus. [Initial Codex prompt here](https://chatgpt.com/s/cd_68e9b9732a688191a61e6ff03a49cbdf).
-<img width="1067" height="562" alt="image" src="https://github.com/user-attachments/assets/d99cafca-c63a-4365-9c4c-ee7c800fa3f3" />
+<img width="913" height="782" alt="image" src="https://github.com/user-attachments/assets/e473c194-1b0e-4d9c-84e1-e2b138e063c3" />
 
 ## Agent Context
 

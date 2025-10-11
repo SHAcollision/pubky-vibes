@@ -62,7 +62,7 @@ impl Tab {
 pub fn App() -> Element {
     let active_tab = use_signal(|| Tab::Keys);
     let network_mode = use_signal(|| NetworkMode::Mainnet);
-    let logs = use_signal(|| Vec::<LogEntry>::new());
+    let logs = use_signal(Vec::<LogEntry>::new);
     let show_logs = use_signal(|| false);
 
     let keypair = use_signal(|| Option::<Keypair>::None);
@@ -106,7 +106,7 @@ pub fn App() -> Element {
         "Show activity"
     };
     let has_logs = !logs.read().is_empty();
-    let mut toggle_logs_signal = show_logs.clone();
+    let mut toggle_logs_signal = show_logs;
 
     rsx! {
         style { {APP_STYLE} }
@@ -126,7 +126,7 @@ pub fn App() -> Element {
                 div { class: "header-controls",
                     div { class: "network-toggle",
                         for mode in NetworkMode::ALL {
-                            NetworkToggleOption { network_mode: network_mode.clone(), mode }
+                            NetworkToggleOption { network_mode, mode }
                         }
                     }
                 }
@@ -134,7 +134,7 @@ pub fn App() -> Element {
             main {
                 nav { class: "tabs",
                     for tab in Tab::ALL {
-                        TabButton { tab, active_tab: active_tab.clone() }
+                        TabButton { tab, active_tab }
                     }
                 }
                 div { class: "panel",

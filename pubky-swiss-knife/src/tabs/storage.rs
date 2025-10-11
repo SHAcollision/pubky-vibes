@@ -6,6 +6,7 @@ use crate::utils::http::format_response;
 use crate::utils::logging::{LogEntry, LogLevel, push_log};
 use crate::utils::pubky::build_pubky;
 
+#[allow(clippy::too_many_arguments)]
 pub fn render_storage_tab(
     network_mode: Signal<NetworkMode>,
     session: Signal<Option<PubkySession>>,
@@ -22,30 +23,30 @@ pub fn render_storage_tab(
     let public_value = { public_resource.read().clone() };
     let public_resp = { public_response.read().clone() };
 
-    let mut storage_path_binding = storage_path.clone();
-    let mut storage_body_binding = storage_body.clone();
+    let mut storage_path_binding = storage_path;
+    let mut storage_body_binding = storage_body;
 
-    let storage_session_get = session.clone();
-    let storage_path_get = storage_path.clone();
-    let storage_response_get = storage_response.clone();
-    let storage_logs_get = logs.clone();
+    let storage_session_get = session;
+    let storage_path_get = storage_path;
+    let storage_response_get = storage_response;
+    let storage_logs_get = logs;
 
-    let storage_session_put = session.clone();
-    let storage_path_put = storage_path.clone();
-    let storage_body_put = storage_body.clone();
-    let storage_response_put = storage_response.clone();
-    let storage_logs_put = logs.clone();
+    let storage_session_put = session;
+    let storage_path_put = storage_path;
+    let storage_body_put = storage_body;
+    let storage_response_put = storage_response;
+    let storage_logs_put = logs;
 
-    let storage_session_delete = session.clone();
-    let storage_path_delete = storage_path.clone();
-    let storage_response_delete = storage_response.clone();
-    let storage_logs_delete = logs.clone();
+    let storage_session_delete = session;
+    let storage_path_delete = storage_path;
+    let storage_response_delete = storage_response;
+    let storage_logs_delete = logs;
 
-    let mut public_resource_binding = public_resource.clone();
-    let public_resource_signal = public_resource.clone();
-    let public_response_signal = public_response.clone();
-    let public_logs = logs.clone();
-    let public_network = network_mode.clone();
+    let mut public_resource_binding = public_resource;
+    let public_resource_signal = public_resource;
+    let public_response_signal = public_response;
+    let public_logs = logs;
+    let public_network = network_mode;
 
     rsx! {
         div { class: "tab-body",
@@ -67,11 +68,11 @@ pub fn render_storage_tab(
                         if let Some(session) = storage_session_get.read().as_ref().cloned() {
                             let path = storage_path_get.read().clone();
                             if path.trim().is_empty() {
-                                push_log(storage_logs_get.clone(), LogLevel::Error, "Provide a path to GET");
+                                push_log(storage_logs_get, LogLevel::Error, "Provide a path to GET");
                                 return;
                             }
-                            let mut response_signal = storage_response_get.clone();
-                            let logs_task = storage_logs_get.clone();
+                            let mut response_signal = storage_response_get;
+                            let logs_task = storage_logs_get;
                             spawn(async move {
                                 let result = async move {
                                     let resp = session.storage().get(path.clone()).await?;
@@ -94,12 +95,12 @@ pub fn render_storage_tab(
                         if let Some(session) = storage_session_put.read().as_ref().cloned() {
                             let path = storage_path_put.read().clone();
                             if path.trim().is_empty() {
-                                push_log(storage_logs_put.clone(), LogLevel::Error, "Provide a path to PUT");
+                                push_log(storage_logs_put, LogLevel::Error, "Provide a path to PUT");
                                 return;
                             }
                             let body = storage_body_put.read().clone();
-                            let mut response_signal = storage_response_put.clone();
-                            let logs_task = storage_logs_put.clone();
+                            let mut response_signal = storage_response_put;
+                            let logs_task = storage_logs_put;
                             spawn(async move {
                                 let result = async move {
                                     let resp = session.storage().put(path.clone(), body.clone()).await?;
@@ -122,11 +123,11 @@ pub fn render_storage_tab(
                         if let Some(session) = storage_session_delete.read().as_ref().cloned() {
                             let path = storage_path_delete.read().clone();
                             if path.trim().is_empty() {
-                                push_log(storage_logs_delete.clone(), LogLevel::Error, "Provide a path to DELETE");
+                                push_log(storage_logs_delete, LogLevel::Error, "Provide a path to DELETE");
                                 return;
                             }
-                            let mut response_signal = storage_response_delete.clone();
-                            let logs_task = storage_logs_delete.clone();
+                            let mut response_signal = storage_response_delete;
+                            let logs_task = storage_logs_delete;
                             spawn(async move {
                                 let result = async move {
                                     let resp = session.storage().delete(path.clone()).await?;
@@ -163,11 +164,11 @@ pub fn render_storage_tab(
                     button { class: "action", onclick: move |_| {
                         let resource = public_resource_signal.read().clone();
                         if resource.trim().is_empty() {
-                            push_log(public_logs.clone(), LogLevel::Error, "Provide a resource to fetch");
+                            push_log(public_logs, LogLevel::Error, "Provide a resource to fetch");
                             return;
                         }
-                        let mut response_signal = public_response_signal.clone();
-                        let logs_task = public_logs.clone();
+                        let mut response_signal = public_response_signal;
+                        let logs_task = public_logs;
                         let network = *public_network.read();
                         spawn(async move {
                             let result = async move {

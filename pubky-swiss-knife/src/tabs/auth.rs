@@ -9,6 +9,7 @@ use crate::utils::logging::{LogEntry, LogLevel, push_log};
 use crate::utils::pubky::build_pubky;
 use crate::utils::qr::generate_qr_data_url;
 
+#[allow(clippy::too_many_arguments)]
 pub fn render_auth_tab(
     network_mode: Signal<NetworkMode>,
     keypair: Signal<Option<Keypair>>,
@@ -30,37 +31,37 @@ pub fn render_auth_tab(
     let qr_value = { auth_qr_data.read().clone() };
     let request_value = { auth_request_input.read().clone() };
 
-    let mut caps_binding = auth_caps_input.clone();
-    let mut relay_binding = auth_relay_input.clone();
-    let mut request_binding = auth_request_input.clone();
+    let mut caps_binding = auth_caps_input;
+    let mut relay_binding = auth_relay_input;
+    let mut request_binding = auth_request_input;
 
-    let start_network = network_mode.clone();
-    let start_caps_signal = auth_caps_input.clone();
-    let start_relay_signal = auth_relay_input.clone();
-    let start_flow_signal = auth_flow.clone();
-    let start_url_signal = auth_url_output.clone();
-    let start_qr_signal = auth_qr_data.clone();
-    let start_status_signal = auth_status.clone();
-    let start_logs = logs.clone();
+    let start_network = network_mode;
+    let start_caps_signal = auth_caps_input;
+    let start_relay_signal = auth_relay_input;
+    let start_flow_signal = auth_flow;
+    let start_url_signal = auth_url_output;
+    let start_qr_signal = auth_qr_data;
+    let start_status_signal = auth_status;
+    let start_logs = logs;
 
-    let mut await_flow_signal = auth_flow.clone();
-    let mut await_status_signal = auth_status.clone();
-    let await_url_signal = auth_url_output.clone();
-    let await_qr_signal = auth_qr_data.clone();
-    let await_session_signal = session.clone();
-    let await_details_signal = session_details.clone();
-    let await_logs = logs.clone();
+    let mut await_flow_signal = auth_flow;
+    let mut await_status_signal = auth_status;
+    let await_url_signal = auth_url_output;
+    let await_qr_signal = auth_qr_data;
+    let await_session_signal = session;
+    let await_details_signal = session_details;
+    let await_logs = logs;
 
-    let mut cancel_flow_signal = auth_flow.clone();
-    let mut cancel_status_signal = auth_status.clone();
-    let mut cancel_url_signal = auth_url_output.clone();
-    let mut cancel_qr_signal = auth_qr_data.clone();
-    let cancel_logs = logs.clone();
+    let mut cancel_flow_signal = auth_flow;
+    let mut cancel_status_signal = auth_status;
+    let mut cancel_url_signal = auth_url_output;
+    let mut cancel_qr_signal = auth_qr_data;
+    let cancel_logs = logs;
 
-    let approve_network = network_mode.clone();
-    let approve_keypair = keypair.clone();
-    let approve_request_signal = auth_request_input.clone();
-    let approve_logs = logs.clone();
+    let approve_network = network_mode;
+    let approve_keypair = keypair;
+    let approve_request_signal = auth_request_input;
+    let approve_logs = logs;
 
     rsx! {
         div { class: "tab-body",
@@ -89,16 +90,16 @@ pub fn render_auth_tab(
                     button { class: "action", onclick: move |_| {
                         let caps_text = start_caps_signal.read().clone();
                         if caps_text.trim().is_empty() {
-                            push_log(start_logs.clone(), LogLevel::Error, "Provide capabilities for the request");
+                            push_log(start_logs, LogLevel::Error, "Provide capabilities for the request");
                             return;
                         }
                         let relay_text = start_relay_signal.read().clone();
                         let network = *start_network.read();
-                        let mut flow_slot = start_flow_signal.clone();
-                        let mut url_slot = start_url_signal.clone();
-                        let mut qr_slot = start_qr_signal.clone();
-                        let mut status_slot = start_status_signal.clone();
-                        let logs_task = start_logs.clone();
+                        let mut flow_slot = start_flow_signal;
+                        let mut url_slot = start_url_signal;
+                        let mut qr_slot = start_qr_signal;
+                        let mut status_slot = start_status_signal;
+                        let logs_task = start_logs;
                         spawn(async move {
                             let result = async move {
                                 let capabilities = Capabilities::try_from(caps_text.trim())
@@ -143,12 +144,12 @@ pub fn render_auth_tab(
                         };
                         if let Some(flow) = maybe_flow {
                             await_status_signal.set(String::from("Waiting for remote approval..."));
-                            let mut url_slot = await_url_signal.clone();
-                            let mut qr_slot = await_qr_signal.clone();
-                            let mut status_slot = await_status_signal.clone();
-                            let mut session_slot = await_session_signal.clone();
-                            let mut details_slot = await_details_signal.clone();
-                            let logs_task = await_logs.clone();
+                            let mut url_slot = await_url_signal;
+                            let mut qr_slot = await_qr_signal;
+                            let mut status_slot = await_status_signal;
+                            let mut session_slot = await_session_signal;
+                            let mut details_slot = await_details_signal;
+                            let logs_task = await_logs;
                             spawn(async move {
                                 match flow.await_approval().await {
                                     Ok(new_session) => {
@@ -189,7 +190,7 @@ pub fn render_auth_tab(
                         cancel_url_signal.set(String::new());
                         cancel_qr_signal.set(None);
                         if had_flow {
-                            push_log(cancel_logs.clone(), LogLevel::Info, "Auth flow cancelled");
+                            push_log(cancel_logs, LogLevel::Info, "Auth flow cancelled");
                         } else {
                             push_log(cancel_logs, LogLevel::Error, "No auth flow to cancel");
                         }
@@ -232,13 +233,13 @@ pub fn render_auth_tab(
                     button { class: "action", onclick: move |_| {
                         let url = approve_request_signal.read().clone();
                         if url.trim().is_empty() {
-                            push_log(approve_logs.clone(), LogLevel::Error, "Paste a pubkyauth:// URL to approve");
+                            push_log(approve_logs, LogLevel::Error, "Paste a pubkyauth:// URL to approve");
                             return;
                         }
                         if let Some(kp) = approve_keypair.read().as_ref().cloned() {
                             let network = *approve_network.read();
                             let url_string = url.trim().to_string();
-                            let logs_task = approve_logs.clone();
+                            let logs_task = approve_logs;
                             spawn(async move {
                                 let result = async move {
                                     let pubky = build_pubky(network)?;

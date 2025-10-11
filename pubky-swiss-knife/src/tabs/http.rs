@@ -52,7 +52,7 @@ pub fn render_http_tab(
                         select {
                             value: method_value.clone(),
                             oninput: move |evt| method_binding.set(evt.value()),
-                            title: "HTTP verb forwarded to PubkyHttpClient::request",
+                            title: "Choose the HTTP method for this request",
                             for option in ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"] {
                                 option { value: option, selected: method_value == option, "{option}" }
                             }
@@ -64,7 +64,7 @@ pub fn render_http_tab(
                             value: url_value.clone(),
                             oninput: move |evt| url_binding.set(evt.value()),
                             placeholder: "https:// or pubky://",
-                            title: "Target endpoint resolved by PubkyHttpClient, accepts HTTPS or pubky://",
+                            title: "Enter the destination URL, either https:// or pubky://",
                         }
                     }
                 }
@@ -76,7 +76,7 @@ pub fn render_http_tab(
                             value: headers_value.clone(),
                             oninput: move |evt| headers_binding.set(evt.value()),
                             placeholder: "Header-Name: value",
-                            title: "Each line becomes a reqwest header for the outgoing request",
+                            title: "List any request headers, one per line in Name: Value format",
                         }
                     }
                     label {
@@ -86,14 +86,14 @@ pub fn render_http_tab(
                             value: body_value.clone(),
                             oninput: move |evt| body_binding.set(evt.value()),
                             placeholder: "Request body (optional)",
-                            title: "Optional payload forwarded to reqwest::RequestBuilder::body",
+                            title: "Optional request body to send",
                         }
                     }
                 }
                 div { class: "small-buttons",
                     button {
                         class: "action",
-                        title: "Execute a Pubky-aware HTTP request using PubkyHttpClient",
+                        title: "Send the request through the Pubky-aware client",
                         onclick: move |_| {
                             let method = request_method_signal.read().clone();
                             let url = request_url_signal.read().clone();

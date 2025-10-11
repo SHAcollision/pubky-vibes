@@ -33,7 +33,7 @@ pub fn render_tokens_tab(state: TokensTabState, logs: ActivityLog) -> Element {
                         input {
                             value: caps_value,
                             oninput: move |evt| token_caps_binding.set(evt.value()),
-                            title: "Comma-separated capability list parsed by pubky::Capabilities::try_from",
+                            title: "Enter the capabilities you want to grant, separated by commas",
                             placeholder: "Comma-separated scopes"
                         }
                     }
@@ -41,7 +41,7 @@ pub fn render_tokens_tab(state: TokensTabState, logs: ActivityLog) -> Element {
                 div { class: "small-buttons",
                     button {
                         class: "action",
-                        title: "Sign the listed scopes with AuthToken::sign using the active Keypair",
+                        title: "Sign the listed scopes with the currently loaded key",
                         onclick: move |_| {
                             let caps = sign_caps.read().clone();
                             if let Some(kp) = sign_keypair.read().as_ref() {

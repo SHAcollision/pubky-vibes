@@ -61,7 +61,7 @@ pub fn render_storage_tab(
                         input {
                             value: path_value.clone(),
                             oninput: move |evt| storage_path_binding.set(evt.value()),
-                            title: "Absolute storage path used with session.storage().* calls",
+                            title: "Absolute path inside your session's private storage",
                         }
                     }
                     label {
@@ -70,14 +70,14 @@ pub fn render_storage_tab(
                             class: "tall",
                             value: body_value.clone(),
                             oninput: move |evt| storage_body_binding.set(evt.value()),
-                            title: "Request payload uploaded via session.storage().put",
+                            title: "Content to upload when storing data",
                         }
                     }
                 }
                 div { class: "small-buttons",
                     button {
                         class: "action",
-                        title: "Perform session.storage().get for the provided path",
+                        title: "Fetch the stored value at this path",
                         onclick: move |_| {
                             if let Some(session) = storage_session_get.read().as_ref().cloned() {
                                 let path = storage_path_get.read().clone();
@@ -107,7 +107,7 @@ pub fn render_storage_tab(
                     }
                     button {
                         class: "action secondary",
-                        title: "Call session.storage().put to write the body to the path",
+                        title: "Write the body above to this storage path",
                         onclick: move |_| {
                             if let Some(session) = storage_session_put.read().as_ref().cloned() {
                                 let path = storage_path_put.read().clone();
@@ -138,7 +138,7 @@ pub fn render_storage_tab(
                     }
                     button {
                         class: "action secondary",
-                        title: "Issue session.storage().delete to remove the resource",
+                        title: "Delete the resource stored at this path",
                         onclick: move |_| {
                             if let Some(session) = storage_session_delete.read().as_ref().cloned() {
                                 let path = storage_path_delete.read().clone();
@@ -180,14 +180,14 @@ pub fn render_storage_tab(
                         input {
                             value: public_value.clone(),
                             oninput: move |evt| public_resource_binding.set(evt.value()),
-                            title: "Public path or pubky:// URL fetched with pubky.public_storage().get",
+                            title: "Enter a public storage path or pubky:// link to fetch",
                         }
                     }
                 }
                 div { class: "small-buttons",
                     button {
                         class: "action",
-                        title: "Perform pubky.public_storage().get for the resource",
+                        title: "Fetch the public resource using the Pubky client",
                         onclick: move |_| {
                             let resource = public_resource_signal.read().clone();
                             if resource.trim().is_empty() {

@@ -4,7 +4,7 @@ use dioxus::prelude::*;
 use pubky::Keypair;
 use std::path::PathBuf;
 
-use crate::utils::file_dialog;
+use crate::utils::file_dialog::{self, FileDialogResult};
 use crate::utils::logging::{LogEntry, LogLevel, push_log};
 use crate::utils::recovery::{
     decode_secret_key, load_keypair_from_recovery, normalize_pkarr_path,
@@ -124,14 +124,16 @@ pub fn render_keys_tab(
                             button {
                                 class: "action secondary",
                                 onclick: move |_| {
-                                    if let Some(path) = file_dialog::pick_file() {
-                                        choose_recovery_path_signal.set(path.display().to_string());
-                                    } else if cfg!(target_os = "android") {
-                                        push_log(
+                                    match file_dialog::pick_file() {
+                                        FileDialogResult::Selected(path) => {
+                                            choose_recovery_path_signal.set(path.display().to_string());
+                                        }
+                                        FileDialogResult::Unavailable => push_log(
                                             choose_logs.clone(),
                                             LogLevel::Info,
-                                            "File picker unavailable on Android. Enter a path manually.",
-                                        );
+                                            file_dialog::MANUAL_ENTRY_HINT,
+                                        ),
+                                        FileDialogResult::Cancelled => {}
                                     }
                                 },
                                 "Choose file"
@@ -150,21 +152,20 @@ pub fn render_keys_tab(
                             let mut immediate_path_signal = load_path_signal.clone();
                             let chosen_path = if raw_path.trim().is_empty() {
                                 match file_dialog::pick_file() {
-                                    Some(path) => {
+                                    FileDialogResult::Selected(path) => {
                                         let display = path.display().to_string();
                                         immediate_path_signal.set(display.clone());
                                         Some(display)
                                     }
-                                    None => {
-                                        if cfg!(target_os = "android") {
-                                            push_log(
-                                                load_logs.clone(),
-                                                LogLevel::Info,
-                                                "File picker unavailable on Android. Enter a path manually.",
-                                            );
-                                        }
+                                    FileDialogResult::Unavailable => {
+                                        push_log(
+                                            load_logs.clone(),
+                                            LogLevel::Info,
+                                            file_dialog::MANUAL_ENTRY_HINT,
+                                        );
                                         None
                                     }
+                                    FileDialogResult::Cancelled => None,
                                 }
                             } else {
                                 Some(raw_path.clone())
@@ -213,21 +214,20 @@ pub fn render_keys_tab(
                                 let mut immediate_path_signal = save_path_signal.clone();
                                 let chosen_path = if raw_path.trim().is_empty() {
                                     match file_dialog::save_file() {
-                                        Some(path) => {
+                                        FileDialogResult::Selected(path) => {
                                             let display = path.display().to_string();
                                             immediate_path_signal.set(display.clone());
                                             Some(display)
                                         }
-                                        None => {
-                                            if cfg!(target_os = "android") {
-                                                push_log(
-                                                    save_logs.clone(),
-                                                    LogLevel::Info,
-                                                    "File picker unavailable on Android. Enter a path manually.",
-                                                );
-                                            }
+                                        FileDialogResult::Unavailable => {
+                                            push_log(
+                                                save_logs.clone(),
+                                                LogLevel::Info,
+                                                file_dialog::MANUAL_ENTRY_HINT,
+                                            );
                                             None
                                         }
+                                        FileDialogResult::Cancelled => None,
                                     }
                                 } else {
                                     Some(raw_path.clone())

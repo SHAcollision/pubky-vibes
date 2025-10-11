@@ -5,6 +5,7 @@ use crate::utils::http::format_response;
 use crate::utils::logging::{LogEntry, LogLevel, push_log};
 use crate::utils::pubky::PubkyFacadeState;
 
+#[allow(clippy::too_many_arguments, clippy::clone_on_copy)]
 pub fn render_storage_tab(
     pubky_state: Signal<PubkyFacadeState>,
     session: Signal<Option<PubkySession>>,
@@ -54,95 +55,113 @@ pub fn render_storage_tab(
                 div { class: "form-grid",
                     label {
                         "Absolute path"
-                        input { value: path_value.clone(), oninput: move |evt| storage_path_binding.set(evt.value()) }
+                        input {
+                            value: path_value.clone(),
+                            oninput: move |evt| storage_path_binding.set(evt.value()),
+                            title: "Absolute path inside your session's private storage",
+                        }
                     }
                     label {
                         "Body"
-                        textarea { class: "tall", value: body_value.clone(), oninput: move |evt| storage_body_binding.set(evt.value()) }
+                        textarea {
+                            class: "tall",
+                            value: body_value.clone(),
+                            oninput: move |evt| storage_body_binding.set(evt.value()),
+                            title: "Content to upload when storing data",
+                        }
                     }
                 }
                 div { class: "small-buttons",
-                    button { class: "action", onclick: move |_| {
-                        if let Some(session) = storage_session_get.read().as_ref().cloned() {
-                            let path = storage_path_get.read().clone();
-                            if path.trim().is_empty() {
-                                push_log(storage_logs_get.clone(), LogLevel::Error, "Provide a path to GET");
-                                return;
-                            }
-                            let mut response_signal = storage_response_get.clone();
-                            let logs_task = storage_logs_get.clone();
-                            spawn(async move {
-                                let result = async move {
-                                    let resp = session.storage().get(path.clone()).await?;
-                                    let formatted = format_response(resp).await?;
-                                    response_signal.set(formatted.clone());
-                                    Ok::<_, anyhow::Error>(format!("Fetched {path}"))
-                                };
-                                match result.await {
-                                    Ok(msg) => push_log(logs_task, LogLevel::Success, msg),
-                                    Err(err) => push_log(logs_task, LogLevel::Error, format!("GET failed: {err}")),
+                    button {
+                        class: "action",
+                        title: "Fetch the stored value at this path",
+                        onclick: move |_| {
+                            if let Some(session) = storage_session_get.read().as_ref().cloned() {
+                                let path = storage_path_get.read().clone();
+                                if path.trim().is_empty() {
+                                    push_log(storage_logs_get.clone(), LogLevel::Error, "Provide a path to GET");
+                                    return;
                                 }
-                            });
-                        } else {
-                            push_log(storage_logs_get, LogLevel::Error, "No active session");
-                        }
-                    },
-                    "GET"
+                                let mut response_signal = storage_response_get.clone();
+                                let logs_task = storage_logs_get.clone();
+                                spawn(async move {
+                                    let result = async move {
+                                        let resp = session.storage().get(path.clone()).await?;
+                                        let formatted = format_response(resp).await?;
+                                        response_signal.set(formatted.clone());
+                                        Ok::<_, anyhow::Error>(format!("Fetched {path}"))
+                                    };
+                                    match result.await {
+                                        Ok(msg) => push_log(logs_task, LogLevel::Success, msg),
+                                        Err(err) => push_log(logs_task, LogLevel::Error, format!("GET failed: {err}")),
+                                    }
+                                });
+                            } else {
+                                push_log(storage_logs_get, LogLevel::Error, "No active session");
+                            }
+                        },
+                        "GET",
                     }
-                    button { class: "action secondary", onclick: move |_| {
-                        if let Some(session) = storage_session_put.read().as_ref().cloned() {
-                            let path = storage_path_put.read().clone();
-                            if path.trim().is_empty() {
-                                push_log(storage_logs_put.clone(), LogLevel::Error, "Provide a path to PUT");
-                                return;
-                            }
-                            let body = storage_body_put.read().clone();
-                            let mut response_signal = storage_response_put.clone();
-                            let logs_task = storage_logs_put.clone();
-                            spawn(async move {
-                                let result = async move {
-                                    let resp = session.storage().put(path.clone(), body.clone()).await?;
-                                    let formatted = format_response(resp).await?;
-                                    response_signal.set(formatted.clone());
-                                    Ok::<_, anyhow::Error>(format!("Stored {path}"))
-                                };
-                                match result.await {
-                                    Ok(msg) => push_log(logs_task, LogLevel::Success, msg),
-                                    Err(err) => push_log(logs_task, LogLevel::Error, format!("PUT failed: {err}")),
+                    button {
+                        class: "action secondary",
+                        title: "Write the body above to this storage path",
+                        onclick: move |_| {
+                            if let Some(session) = storage_session_put.read().as_ref().cloned() {
+                                let path = storage_path_put.read().clone();
+                                if path.trim().is_empty() {
+                                    push_log(storage_logs_put.clone(), LogLevel::Error, "Provide a path to PUT");
+                                    return;
                                 }
-                            });
-                        } else {
-                            push_log(storage_logs_put, LogLevel::Error, "No active session");
-                        }
-                    },
-                    "PUT"
+                                let body = storage_body_put.read().clone();
+                                let mut response_signal = storage_response_put.clone();
+                                let logs_task = storage_logs_put.clone();
+                                spawn(async move {
+                                    let result = async move {
+                                        let resp = session.storage().put(path.clone(), body.clone()).await?;
+                                        let formatted = format_response(resp).await?;
+                                        response_signal.set(formatted.clone());
+                                        Ok::<_, anyhow::Error>(format!("Stored {path}"))
+                                    };
+                                    match result.await {
+                                        Ok(msg) => push_log(logs_task, LogLevel::Success, msg),
+                                        Err(err) => push_log(logs_task, LogLevel::Error, format!("PUT failed: {err}")),
+                                    }
+                                });
+                            } else {
+                                push_log(storage_logs_put, LogLevel::Error, "No active session");
+                            }
+                        },
+                        "PUT",
                     }
-                    button { class: "action secondary", onclick: move |_| {
-                        if let Some(session) = storage_session_delete.read().as_ref().cloned() {
-                            let path = storage_path_delete.read().clone();
-                            if path.trim().is_empty() {
-                                push_log(storage_logs_delete.clone(), LogLevel::Error, "Provide a path to DELETE");
-                                return;
-                            }
-                            let mut response_signal = storage_response_delete.clone();
-                            let logs_task = storage_logs_delete.clone();
-                            spawn(async move {
-                                let result = async move {
-                                    let resp = session.storage().delete(path.clone()).await?;
-                                    let formatted = format_response(resp).await?;
-                                    response_signal.set(formatted.clone());
-                                    Ok::<_, anyhow::Error>(format!("Deleted {path}"))
-                                };
-                                match result.await {
-                                    Ok(msg) => push_log(logs_task, LogLevel::Success, msg),
-                                    Err(err) => push_log(logs_task, LogLevel::Error, format!("DELETE failed: {err}")),
+                    button {
+                        class: "action secondary",
+                        title: "Delete the resource stored at this path",
+                        onclick: move |_| {
+                            if let Some(session) = storage_session_delete.read().as_ref().cloned() {
+                                let path = storage_path_delete.read().clone();
+                                if path.trim().is_empty() {
+                                    push_log(storage_logs_delete.clone(), LogLevel::Error, "Provide a path to DELETE");
+                                    return;
                                 }
-                            });
-                        } else {
-                            push_log(storage_logs_delete, LogLevel::Error, "No active session");
-                        }
-                    },
-                    "DELETE"
+                                let mut response_signal = storage_response_delete.clone();
+                                let logs_task = storage_logs_delete.clone();
+                                spawn(async move {
+                                    let result = async move {
+                                        let resp = session.storage().delete(path.clone()).await?;
+                                        let formatted = format_response(resp).await?;
+                                        response_signal.set(formatted.clone());
+                                        Ok::<_, anyhow::Error>(format!("Deleted {path}"))
+                                    };
+                                    match result.await {
+                                        Ok(msg) => push_log(logs_task, LogLevel::Success, msg),
+                                        Err(err) => push_log(logs_task, LogLevel::Error, format!("DELETE failed: {err}")),
+                                    }
+                                });
+                            } else {
+                                push_log(storage_logs_delete, LogLevel::Error, "No active session");
+                            }
+                        },
+                        "DELETE",
                     }
                 }
                 if !session_response.is_empty() {
@@ -155,42 +174,49 @@ pub fn render_storage_tab(
                 div { class: "form-grid",
                     label {
                         "Resource"
-                        input { value: public_value.clone(), oninput: move |evt| public_resource_binding.set(evt.value()) }
+                        input {
+                            value: public_value.clone(),
+                            oninput: move |evt| public_resource_binding.set(evt.value()),
+                            title: "Enter a public storage path or pubky:// link to fetch",
+                        }
                     }
                 }
                 div { class: "small-buttons",
-                    button { class: "action", onclick: move |_| {
-                        let resource = public_resource_signal.read().clone();
-                        if resource.trim().is_empty() {
-                            push_log(public_logs.clone(), LogLevel::Error, "Provide a resource to fetch");
-                            return;
-                        }
-                        let mut response_signal = public_response_signal.clone();
-                        let logs_task = public_logs.clone();
-                        let maybe_pubky = { public_pubky_state.read().facade() };
-                        let Some(pubky) = maybe_pubky else {
-                            push_log(
-                                public_logs.clone(),
-                                LogLevel::Info,
-                                "Pubky facade is still starting up. Try again shortly.",
-                            );
-                            return;
-                        };
-                        let pubky = pubky.clone();
-                        spawn(async move {
-                            let result = async move {
-                                let resp = pubky.public_storage().get(resource.clone()).await?;
-                                let formatted = format_response(resp).await?;
-                                response_signal.set(formatted.clone());
-                                Ok::<_, anyhow::Error>(format!("Fetched public resource {resource}"))
-                            };
-                            match result.await {
-                                Ok(msg) => push_log(logs_task, LogLevel::Success, msg),
-                                Err(err) => push_log(logs_task, LogLevel::Error, format!("Public GET failed: {err}")),
+                    button {
+                        class: "action",
+                        title: "Fetch the public resource using the Pubky client",
+                        onclick: move |_| {
+                            let resource = public_resource_signal.read().clone();
+                            if resource.trim().is_empty() {
+                                push_log(public_logs.clone(), LogLevel::Error, "Provide a resource to fetch");
+                                return;
                             }
-                        });
-                    },
-                    "GET"
+                            let mut response_signal = public_response_signal.clone();
+                            let logs_task = public_logs.clone();
+                            let maybe_pubky = { public_pubky_state.read().facade() };
+                            let Some(pubky) = maybe_pubky else {
+                                push_log(
+                                    public_logs.clone(),
+                                    LogLevel::Info,
+                                    "Pubky facade is still starting up. Try again shortly.",
+                                );
+                                return;
+                            };
+                            let pubky = pubky.clone();
+                            spawn(async move {
+                                let result = async move {
+                                    let resp = pubky.public_storage().get(resource.clone()).await?;
+                                    let formatted = format_response(resp).await?;
+                                    response_signal.set(formatted.clone());
+                                    Ok::<_, anyhow::Error>(format!("Fetched public resource {resource}"))
+                                };
+                                match result.await {
+                                    Ok(msg) => push_log(logs_task, LogLevel::Success, msg),
+                                    Err(err) => push_log(logs_task, LogLevel::Error, format!("Public GET failed: {err}")),
+                                }
+                            });
+                        },
+                        "GET",
                     }
                 }
                 if !public_resp.is_empty() {

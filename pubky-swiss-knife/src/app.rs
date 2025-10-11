@@ -59,11 +59,11 @@ impl Tab {
     }
 }
 
-#[allow(non_snake_case)]
+#[allow(non_snake_case, clippy::clone_on_copy)]
 pub fn App() -> Element {
     let active_tab = use_signal(|| Tab::Keys);
     let network_mode = use_signal(|| NetworkMode::Mainnet);
-    let logs = use_signal(|| Vec::<LogEntry>::new());
+    let logs = use_signal(Vec::<LogEntry>::new);
     let show_logs = use_signal(|| false);
 
     let pubky_facade = use_signal(|| PubkyFacadeState::loading(NetworkMode::Mainnet));
@@ -230,6 +230,7 @@ pub fn App() -> Element {
                         div { class: "small-buttons",
                             button {
                                 class: "action",
+                                title: "Try to initialize Pubky again with the default settings",
                                 onclick: move |_| queue_pubky_build(pubky_facade, network_mode, retry_network, true),
                                 "Retry"
                             }
@@ -240,6 +241,7 @@ pub fn App() -> Element {
             div { class: "activity-drawer",
                 button {
                     class: "activity-button",
+                    title: "Show or hide the live log of Pubky activity",
                     onclick: move |_| {
                         let next = !*toggle_logs_signal.read();
                         toggle_logs_signal.set(next);
@@ -291,7 +293,6 @@ fn queue_pubky_build(
 
     let mut setter = pubky_state;
     spawn({
-        let network_signal = network_signal;
         async move {
             match crate::utils::pubky::build_pubky_facade(target).await {
                 Ok(pubky) => {

@@ -37,10 +37,10 @@ pub(crate) fn App() -> Element {
     );
 
     let start_server = {
-        let data_dir_signal = data_dir.clone();
-        let mut status_signal = status.clone();
-        let mut suite_signal = suite_handle.clone();
-        let network_signal = network.clone();
+        let data_dir_signal = data_dir;
+        let mut status_signal = status;
+        let mut suite_signal = suite_handle;
+        let network_signal = network;
 
         move |_| {
             let selection = *network_signal.read();
@@ -54,22 +54,22 @@ pub(crate) fn App() -> Element {
             };
 
             suite_signal.write().take();
-            spawn_start_task(start_spec, status_signal.clone(), suite_signal.clone());
+            spawn_start_task(start_spec, status_signal, suite_signal);
         }
     };
 
     let stop_server = {
-        let status_signal = status.clone();
-        let suite_signal = suite_handle.clone();
+        let status_signal = status;
+        let suite_signal = suite_handle;
 
         move |_| {
-            stop_current_server(status_signal.clone(), suite_signal.clone());
+            stop_current_server(status_signal, suite_signal);
         }
     };
 
     let load_config = {
-        let data_dir_signal = data_dir.clone();
-        let mut config_signal = config_state.clone();
+        let data_dir_signal = data_dir;
+        let mut config_signal = config_state;
 
         move |_| {
             let dir = data_dir_signal.read().to_string();
@@ -89,11 +89,11 @@ pub(crate) fn App() -> Element {
     };
 
     let save_and_restart = {
-        let mut config_signal = config_state.clone();
-        let data_dir_signal = data_dir.clone();
-        let status_signal = status.clone();
-        let suite_signal = suite_handle.clone();
-        let network_signal = network.clone();
+        let mut config_signal = config_state;
+        let data_dir_signal = data_dir;
+        let status_signal = status;
+        let suite_signal = suite_handle;
+        let network_signal = network;
 
         move |_| {
             let form_snapshot = {
@@ -120,8 +120,8 @@ pub(crate) fn App() -> Element {
                         state.feedback = Some(ConfigFeedback::Saved);
                     }
 
-                    stop_current_server(status_signal.clone(), suite_signal.clone());
-                    spawn_start_task(start_spec, status_signal.clone(), suite_signal.clone());
+                    stop_current_server(status_signal, suite_signal);
+                    spawn_start_task(start_spec, status_signal, suite_signal);
                 }
                 Err(err) => {
                     let mut state = config_signal.write();
@@ -150,17 +150,17 @@ pub(crate) fn App() -> Element {
     let config_feedback = config_state_snapshot.feedback.clone();
     let save_disabled = restart_blocked || !config_state_snapshot.dirty;
 
-    let config_state_signup_token = config_state.clone();
-    let config_state_signup_open = config_state.clone();
-    let config_state_pubky = config_state.clone();
-    let config_state_icann = config_state.clone();
-    let config_state_admin_socket = config_state.clone();
-    let config_state_admin_password = config_state.clone();
-    let config_state_public_ip = config_state.clone();
-    let config_state_tls_port = config_state.clone();
-    let config_state_http_port = config_state.clone();
-    let config_state_icann_domain = config_state.clone();
-    let config_state_logging = config_state.clone();
+    let config_state_signup_token = config_state;
+    let config_state_signup_open = config_state;
+    let config_state_pubky = config_state;
+    let config_state_icann = config_state;
+    let config_state_admin_socket = config_state;
+    let config_state_admin_password = config_state;
+    let config_state_public_ip = config_state;
+    let config_state_tls_port = config_state;
+    let config_state_http_port = config_state;
+    let config_state_icann_domain = config_state;
+    let config_state_logging = config_state;
 
     rsx! {
         style { "{STYLE}" }
@@ -171,8 +171,7 @@ pub(crate) fn App() -> Element {
                     alt: "Pubky logo",
                 }
                 div { class: "hero-content",
-                    h1 { "Portable Pubky Homeserver" }
-                    p { "It's your data, bring it with you." }
+                    h1 { "Homeserver" }
                 }
             }
 
@@ -244,7 +243,7 @@ pub(crate) fn App() -> Element {
                                     value: "token_required",
                                     checked: matches!(signup_mode, SignupMode::TokenRequired),
                                     onchange: move |_| {
-                                        modify_config_form(config_state_signup_token.clone(), |form| {
+                                        modify_config_form(config_state_signup_token, |form| {
                                             form.signup_mode = SignupMode::TokenRequired;
                                         });
                                     }
@@ -258,7 +257,7 @@ pub(crate) fn App() -> Element {
                                     value: "open",
                                     checked: matches!(signup_mode, SignupMode::Open),
                                     onchange: move |_| {
-                                        modify_config_form(config_state_signup_open.clone(), |form| {
+                                        modify_config_form(config_state_signup_open, |form| {
                                             form.signup_mode = SignupMode::Open;
                                         });
                                     }
@@ -277,7 +276,7 @@ pub(crate) fn App() -> Element {
                                 placeholder: "127.0.0.1:6287",
                                 oninput: move |evt| {
                                     let value = evt.value();
-                                    modify_config_form(config_state_pubky.clone(), |form| {
+                                    modify_config_form(config_state_pubky, |form| {
                                         form.drive_pubky_listen_socket = value;
                                     });
                                 }
@@ -291,7 +290,7 @@ pub(crate) fn App() -> Element {
                                 placeholder: "127.0.0.1:6286",
                                 oninput: move |evt| {
                                     let value = evt.value();
-                                    modify_config_form(config_state_icann.clone(), |form| {
+                                    modify_config_form(config_state_icann, |form| {
                                         form.drive_icann_listen_socket = value;
                                     });
                                 }
@@ -305,7 +304,7 @@ pub(crate) fn App() -> Element {
                                 placeholder: "127.0.0.1:6288",
                                 oninput: move |evt| {
                                     let value = evt.value();
-                                    modify_config_form(config_state_admin_socket.clone(), |form| {
+                                    modify_config_form(config_state_admin_socket, |form| {
                                         form.admin_listen_socket = value;
                                     });
                                 }
@@ -319,7 +318,7 @@ pub(crate) fn App() -> Element {
                                 placeholder: "admin",
                                 oninput: move |evt| {
                                     let value = evt.value();
-                                    modify_config_form(config_state_admin_password.clone(), |form| {
+                                    modify_config_form(config_state_admin_password, |form| {
                                         form.admin_password = value;
                                     });
                                 }
@@ -333,7 +332,7 @@ pub(crate) fn App() -> Element {
                                 placeholder: "127.0.0.1",
                                 oninput: move |evt| {
                                     let value = evt.value();
-                                    modify_config_form(config_state_public_ip.clone(), |form| {
+                                    modify_config_form(config_state_public_ip, |form| {
                                         form.pkdns_public_ip = value;
                                     });
                                 }
@@ -347,7 +346,7 @@ pub(crate) fn App() -> Element {
                                 placeholder: "6287",
                                 oninput: move |evt| {
                                     let value = evt.value();
-                                    modify_config_form(config_state_tls_port.clone(), |form| {
+                                    modify_config_form(config_state_tls_port, |form| {
                                         form.pkdns_public_pubky_tls_port = value;
                                     });
                                 }
@@ -361,7 +360,7 @@ pub(crate) fn App() -> Element {
                                 placeholder: "80",
                                 oninput: move |evt| {
                                     let value = evt.value();
-                                    modify_config_form(config_state_http_port.clone(), |form| {
+                                    modify_config_form(config_state_http_port, |form| {
                                         form.pkdns_public_icann_http_port = value;
                                     });
                                 }
@@ -375,7 +374,7 @@ pub(crate) fn App() -> Element {
                                 placeholder: "example.com",
                                 oninput: move |evt| {
                                     let value = evt.value();
-                                    modify_config_form(config_state_icann_domain.clone(), |form| {
+                                    modify_config_form(config_state_icann_domain, |form| {
                                         form.pkdns_icann_domain = value;
                                     });
                                 }
@@ -389,7 +388,7 @@ pub(crate) fn App() -> Element {
                                 placeholder: "info",
                                 oninput: move |evt| {
                                     let value = evt.value();
-                                    modify_config_form(config_state_logging.clone(), |form| {
+                                    modify_config_form(config_state_logging, |form| {
                                         form.logging_level = value;
                                     });
                                 }
@@ -436,7 +435,7 @@ pub(crate) fn App() -> Element {
                 }
             }
 
-            StatusPanel { status: status_snapshot.clone() }
+            StatusPanel { status: status_snapshot }
 
             div { class: "footnote",
                 "Tip: keep this window open while the homeserver is running. Close it to gracefully stop Pubky." }

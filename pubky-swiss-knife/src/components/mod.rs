@@ -12,10 +12,15 @@ pub fn NetworkToggleOption(
     let mut setter = network_mode;
     rsx! {
         label {
+            title: format_args!(
+                "Switch the Swiss Knife to the {} network so every tool talks to the right homeserver",
+                mode.label()
+            ),
             input {
                 r#type: "radio",
                 name: "network-mode",
                 checked: is_selected,
+                title: format_args!("Use {} endpoints for every homeserver and HTTP request", mode.label()),
                 onchange: move |_| {
                     setter.set(mode);
                     on_select.call(mode);
@@ -34,6 +39,7 @@ pub fn TabButton(tab: Tab, active_tab: Signal<Tab>) -> Element {
     rsx! {
         button {
             class: class_name,
+            title: format_args!("Show the {} toolbox for exploring that part of Pubky", tab.label()),
             onclick: move |_| setter.set(tab),
             "{tab.label()}"
         }

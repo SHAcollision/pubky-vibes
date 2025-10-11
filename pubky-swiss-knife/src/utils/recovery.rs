@@ -27,11 +27,11 @@ pub fn save_keypair_to_recovery_file(
     passphrase: &str,
 ) -> Result<PathBuf> {
     let normalized = normalize_pkarr_path(path)?;
-    if let Some(parent) = normalized.parent() {
-        if !parent.as_os_str().is_empty() {
-            fs::create_dir_all(parent)
-                .with_context(|| format!("failed to create directory {}", parent.display()))?;
-        }
+    if let Some(parent) = normalized.parent()
+        && !parent.as_os_str().is_empty()
+    {
+        fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create directory {}", parent.display()))?;
     }
     let bytes = recovery_file::create_recovery_file(keypair, passphrase);
     fs::write(&normalized, bytes)
@@ -61,7 +61,7 @@ pub fn normalize_pkarr_path(input: &str) -> Result<PathBuf> {
     let needs_extension = expanded
         .extension()
         .and_then(|ext| ext.to_str())
-        .map(|ext| ext.to_ascii_lowercase() != "pkarr")
+        .map(|ext| !ext.eq_ignore_ascii_case("pkarr"))
         .unwrap_or(true);
     if needs_extension {
         expanded.set_extension("pkarr");

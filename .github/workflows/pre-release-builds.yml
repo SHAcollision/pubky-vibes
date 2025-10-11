@@ -46,6 +46,11 @@ jobs:
       - name: Install cargo-zigbuild
         run: cargo install --locked cargo-zigbuild
 
+      - name: Cache cargo build artifacts
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: pre-release-builds
+
       - name: Download macOS SDK
         run: |
           set -euxo pipefail

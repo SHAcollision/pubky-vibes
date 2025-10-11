@@ -13,12 +13,12 @@ pub fn render_tokens_tab(
     let caps_value = { token_caps_input.read().clone() };
     let token_value = { token_output.read().clone() };
 
-    let mut token_caps_binding = token_caps_input.clone();
+    let mut token_caps_binding = token_caps_input;
 
-    let sign_keypair = keypair.clone();
-    let sign_caps = token_caps_input.clone();
-    let mut sign_token = token_output.clone();
-    let sign_logs = logs.clone();
+    let sign_keypair = keypair;
+    let sign_caps = token_caps_input;
+    let mut sign_token = token_output;
+    let sign_logs = logs;
 
     rsx! {
         div { class: "tab-body single-column",
@@ -31,6 +31,7 @@ pub fn render_tokens_tab(
                         input {
                             value: caps_value,
                             oninput: move |evt| token_caps_binding.set(evt.value()),
+                            title: "Enter the capabilities you want to grant, separated by commas",
                             placeholder: "Comma-separated scopes"
                         }
                     }
@@ -38,6 +39,7 @@ pub fn render_tokens_tab(
                 div { class: "small-buttons",
                     button {
                         class: "action",
+                        title: "Sign the listed scopes with the currently loaded key",
                         onclick: move |_| {
                             let caps = sign_caps.read().clone();
                             if let Some(kp) = sign_keypair.read().as_ref() {
@@ -45,7 +47,7 @@ pub fn render_tokens_tab(
                                     Ok(capabilities) => {
                                         let token = AuthToken::sign(kp, capabilities.clone());
                                         sign_token.set(STANDARD.encode(token.serialize()));
-                                        push_log(sign_logs.clone(), LogLevel::Success, format!(
+                                        push_log(sign_logs, LogLevel::Success, format!(
                                             "Signed token for {} with caps {capabilities}",
                                             kp.public_key()
                                         ));

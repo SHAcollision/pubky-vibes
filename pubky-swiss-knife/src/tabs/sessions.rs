@@ -7,6 +7,7 @@ use crate::tabs::format_session_info;
 use crate::utils::logging::{LogEntry, LogLevel, push_log};
 use crate::utils::pubky::build_pubky;
 
+#[allow(clippy::clone_on_copy)]
 pub fn render_sessions_tab(
     network_mode: Signal<NetworkMode>,
     keypair: Signal<Option<Keypair>>,
@@ -20,30 +21,30 @@ pub fn render_sessions_tab(
     let signup_value = { signup_code_input.read().clone() };
     let details_value = { session_details.read().clone() };
 
-    let mut homeserver_binding = homeserver_input;
-    let mut signup_binding = signup_code_input;
+    let mut homeserver_binding = homeserver_input.clone();
+    let mut signup_binding = signup_code_input.clone();
 
-    let signup_network = network_mode;
-    let signup_keypair = keypair;
-    let signup_homeserver = homeserver_input;
-    let signup_code_signal = signup_code_input;
-    let signup_session_signal = session;
-    let signup_details_signal = session_details;
-    let signup_logs = logs;
+    let signup_network = network_mode.clone();
+    let signup_keypair = keypair.clone();
+    let signup_homeserver = homeserver_input.clone();
+    let signup_code_signal = signup_code_input.clone();
+    let signup_session_signal = session.clone();
+    let signup_details_signal = session_details.clone();
+    let signup_logs = logs.clone();
 
-    let signin_network = network_mode;
-    let signin_keypair = keypair;
-    let signin_session_signal = session;
-    let signin_details_signal = session_details;
-    let signin_logs = logs;
+    let signin_network = network_mode.clone();
+    let signin_keypair = keypair.clone();
+    let signin_session_signal = session.clone();
+    let signin_details_signal = session_details.clone();
+    let signin_logs = logs.clone();
 
-    let revalidate_session_signal = session;
-    let revalidate_details_signal = session_details;
-    let revalidate_logs = logs;
+    let revalidate_session_signal = session.clone();
+    let revalidate_details_signal = session_details.clone();
+    let revalidate_logs = logs.clone();
 
-    let signout_session_signal = session;
-    let signout_details_signal = session_details;
-    let signout_logs = logs;
+    let signout_session_signal = session.clone();
+    let signout_details_signal = session_details.clone();
+    let signout_logs = logs.clone();
 
     rsx! {
         div { class: "tab-body single-column",
@@ -64,14 +65,14 @@ pub fn render_sessions_tab(
                         if let Some(kp) = signup_keypair.read().as_ref().cloned() {
                             let homeserver = signup_homeserver.read().clone();
                             if homeserver.trim().is_empty() {
-                                push_log(signup_logs, LogLevel::Error, "Homeserver public key is required");
+                                push_log(signup_logs.clone(), LogLevel::Error, "Homeserver public key is required");
                                 return;
                             }
                             let signup_code = signup_code_signal.read().clone();
                             let network = *signup_network.read();
-                            let mut session_signal = signup_session_signal;
-                            let mut details_signal = signup_details_signal;
-                            let logs_task = signup_logs;
+                            let mut session_signal = signup_session_signal.clone();
+                            let mut details_signal = signup_details_signal.clone();
+                            let logs_task = signup_logs.clone();
                             spawn(async move {
                                 let result = async move {
                                     let homeserver_pk = PublicKey::try_from(homeserver.as_str())
@@ -99,9 +100,9 @@ pub fn render_sessions_tab(
                     button { class: "action secondary", onclick: move |_| {
                         if let Some(kp) = signin_keypair.read().as_ref().cloned() {
                             let network = *signin_network.read();
-                            let logs_task = signin_logs;
-                            let mut session_signal = signin_session_signal;
-                            let mut details_signal = signin_details_signal;
+                            let logs_task = signin_logs.clone();
+                            let mut session_signal = signin_session_signal.clone();
+                            let mut details_signal = signin_details_signal.clone();
                             spawn(async move {
                                 let result = async move {
                                     let pubky = build_pubky(network)?;
@@ -131,9 +132,9 @@ pub fn render_sessions_tab(
                     }
                     button { class: "action secondary", onclick: move |_| {
                         if let Some(session) = revalidate_session_signal.read().as_ref().cloned() {
-                            let mut session_signal = revalidate_session_signal;
-                            let mut details_signal = revalidate_details_signal;
-                            let logs_task = revalidate_logs;
+                            let mut session_signal = revalidate_session_signal.clone();
+                            let mut details_signal = revalidate_details_signal.clone();
+                            let logs_task = revalidate_logs.clone();
                             spawn(async move {
                                 match session.revalidate().await {
                                     Ok(Some(info)) => {
@@ -155,14 +156,14 @@ pub fn render_sessions_tab(
                     "Revalidate"
                     }
                     button { class: "action secondary", onclick: move |_| {
-                        let mut session_signal = signout_session_signal;
+                        let mut session_signal = signout_session_signal.clone();
                         let maybe_session = {
                             let mut guard = session_signal.write();
                             guard.take()
                         };
                         if let Some(session) = maybe_session {
-                                let mut details_signal = signout_details_signal;
-                                let logs_task = signout_logs;
+                            let mut details_signal = signout_details_signal.clone();
+                            let logs_task = signout_logs.clone();
                             spawn(async move {
                                 match session.signout().await {
                                     Ok(()) => {

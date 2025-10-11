@@ -40,6 +40,8 @@ jobs:
           sudo apt-get install -y libxdo-dev
           sudo apt-get install -y libwebkit2gtk-4.1-dev || sudo apt-get install -y libwebkit2gtk-4.0-dev
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: portable-homeserver
       - name: Cargo clippy
         working-directory: portable-homeserver
         run: cargo clippy -- -D warnings
@@ -57,6 +59,8 @@ jobs:
           sudo apt-get install -y libxdo-dev
           sudo apt-get install -y libwebkit2gtk-4.1-dev || sudo apt-get install -y libwebkit2gtk-4.0-dev
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: portable-homeserver
       - name: Cargo test
         working-directory: portable-homeserver
         run: cargo test

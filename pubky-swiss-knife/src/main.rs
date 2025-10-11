@@ -56,15 +56,22 @@ impl NetworkMode {
 fn NetworkToggleOption(network_mode: Signal<NetworkMode>, mode: NetworkMode) -> Element {
     let is_selected = *network_mode.read() == mode;
     let mut setter = network_mode;
+    let class_name = if is_selected {
+        "segment active"
+    } else {
+        "segment"
+    };
     rsx! {
         label {
+            class: class_name,
             input {
                 r#type: "radio",
                 name: "network-mode",
                 checked: is_selected,
+                class: "visually-hidden",
                 onchange: move |_| setter.set(mode),
             }
-            span { "{mode.label()}" }
+            span { class: "segment-label", "{mode.label()}" }
         }
     }
 }
@@ -152,8 +159,8 @@ html, body {
     width: 100%;
     height: 100%;
     margin: 0;
-    background: radial-gradient(circle at 15% 10%, rgba(59, 130, 246, 0.15), transparent 55%),
-        radial-gradient(circle at 85% 0%, rgba(124, 58, 237, 0.18), transparent 45%),
+    background: radial-gradient(circle at 18% 12%, rgba(59, 130, 246, 0.18), transparent 55%),
+        radial-gradient(circle at 82% -5%, rgba(124, 58, 237, 0.2), transparent 45%),
         #020617;
     color: inherit;
     overflow: hidden;
@@ -169,17 +176,17 @@ body {
     flex-direction: column;
     width: 100%;
     height: 100%;
-    gap: 1.5rem;
-    padding: 1.75rem 2.25rem 2.25rem;
+    gap: 1.25rem;
+    padding: 1.5rem 2rem 2rem;
 }
 
 header {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    gap: 2rem;
-    padding-bottom: 1rem;
-    border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+    align-items: center;
+    gap: 1.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.16);
 }
 
 .title-block {
@@ -191,113 +198,193 @@ header {
 .brand-row {
     display: flex;
     align-items: center;
-    gap: 1rem;
+    gap: 0.75rem;
 }
 
 .brandmark {
-    height: 38px;
+    height: 34px;
     width: auto;
     filter: drop-shadow(0 6px 18px rgba(15, 23, 42, 0.85));
 }
 
 header h1 {
     margin: 0;
-    font-size: 2rem;
+    font-size: 1.85rem;
     font-weight: 600;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.015em;
 }
 
 .subtitle {
     margin: 0;
     font-size: 0.95rem;
-    color: rgba(226, 232, 240, 0.76);
+    color: rgba(226, 232, 240, 0.72);
+    line-height: 1.45;
+    max-width: 520px;
 }
 
 .header-controls {
     display: flex;
-    align-items: flex-start;
-    gap: 1.25rem;
+    align-items: center;
+    gap: 1rem;
+}
+
+.network-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.55rem 0.75rem;
+    border-radius: 0.85rem;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    background: rgba(15, 23, 42, 0.65);
+    box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.07);
+    min-width: 140px;
+}
+
+.summary-label {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: rgba(148, 163, 184, 0.82);
+}
+
+.summary-value {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: rgba(226, 232, 240, 0.95);
 }
 
 .network-toggle {
     display: flex;
-    gap: 0.75rem;
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.9rem;
-    border: 1px solid rgba(148, 163, 184, 0.2);
-    background: rgba(15, 23, 42, 0.7);
+    gap: 0.5rem;
+    padding: 0.35rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(148, 163, 184, 0.24);
+    background: rgba(2, 6, 23, 0.8);
+    box-shadow: inset 0 0 0 1px rgba(59, 130, 246, 0.08);
 }
 
-.network-toggle label {
+.network-toggle label.segment {
+    position: relative;
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 0.35rem;
+    padding: 0.45rem 0.85rem;
+    border-radius: 0.7rem;
     cursor: pointer;
-    font-size: 0.9rem;
-    color: rgba(226, 232, 240, 0.85);
+    font-size: 0.88rem;
+    color: rgba(226, 232, 240, 0.78);
+    transition: background 0.2s ease, color 0.2s ease, box-shadow 0.25s ease;
 }
 
-.network-toggle input[type="radio"] {
-    accent-color: #60a5fa;
+.network-toggle label.segment.active {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.9), rgba(14, 165, 233, 0.85));
+    color: #f8fafc;
+    box-shadow: 0 10px 24px rgba(37, 99, 235, 0.35);
+}
+
+.network-toggle label.segment:not(.active):hover {
+    background: rgba(30, 41, 59, 0.92);
+    color: rgba(226, 232, 240, 0.95);
+}
+
+.network-toggle .segment-label {
+    letter-spacing: 0.01em;
+    font-weight: 500;
+}
+
+.visually-hidden {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    pointer-events: none;
 }
 
 main {
     flex: 1;
     display: grid;
-    grid-template-columns: 220px 1fr;
-    gap: 1.5rem;
+    grid-template-columns: 200px minmax(0, 1fr);
+    gap: 1.25rem;
     min-height: 0;
 }
 
 .tabs {
     display: flex;
     flex-direction: column;
-    gap: 0.65rem;
+    gap: 0.5rem;
+    padding: 0.85rem;
+    border-radius: 1rem;
+    background: rgba(8, 11, 23, 0.82);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    box-shadow: 0 14px 32px rgba(2, 6, 23, 0.55);
 }
 
 .tabs button {
-    padding: 0.75rem 1rem;
+    padding: 0.6rem 0.85rem;
     border: 1px solid transparent;
-    border-radius: 0.85rem;
-    background: rgba(30, 41, 59, 0.6);
-    color: #e2e8f0;
+    border-radius: 0.65rem;
+    background: transparent;
+    color: rgba(226, 232, 240, 0.78);
     font-size: 0.95rem;
+    font-weight: 500;
     cursor: pointer;
     text-align: left;
-    transition: transform 0.15s ease, border 0.2s ease, background 0.25s ease;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    transition: color 0.15s ease, background 0.2s ease, transform 0.18s ease;
 }
 
 .tabs button:hover {
+    color: rgba(226, 232, 240, 0.98);
+    background: rgba(30, 41, 59, 0.8);
     transform: translateX(4px);
-    border-color: rgba(94, 234, 212, 0.3);
 }
 
 .tabs button.active {
-    background: linear-gradient(135deg, rgba(59, 130, 246, 0.95), rgba(124, 58, 237, 0.9));
-    border-color: rgba(148, 163, 184, 0.32);
-    box-shadow: 0 12px 32px rgba(30, 64, 175, 0.35);
-    transform: translateX(8px);
+    color: #f8fafc;
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.92), rgba(124, 58, 237, 0.88));
+    border-color: rgba(148, 163, 184, 0.3);
+    box-shadow: 0 12px 30px rgba(30, 64, 175, 0.35);
+    transform: translateX(0);
 }
 
 .panel {
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
-    background: rgba(8, 11, 23, 0.78);
-    border-radius: 1.15rem;
-    padding: 1.6rem;
-    box-shadow: 0 18px 40px rgba(2, 6, 23, 0.65);
-    border: 1px solid rgba(148, 163, 184, 0.22);
+    gap: 1.1rem;
+    background: rgba(2, 6, 23, 0.82);
+    border-radius: 1.1rem;
+    padding: 1.4rem 1.5rem;
+    box-shadow: 0 16px 36px rgba(2, 6, 23, 0.55);
+    border: 1px solid rgba(148, 163, 184, 0.2);
     min-width: 0;
     overflow-y: auto;
+    backdrop-filter: blur(28px);
+    scrollbar-width: thin;
+    scrollbar-color: rgba(59, 130, 246, 0.45) transparent;
+}
+
+.panel::-webkit-scrollbar {
+    width: 8px;
+}
+
+.panel::-webkit-scrollbar-thumb {
+    background: rgba(59, 130, 246, 0.45);
+    border-radius: 999px;
+}
+
+.panel::-webkit-scrollbar-track {
+    background: transparent;
 }
 
 .tab-body {
     flex: 1;
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-auto-rows: minmax(0, 1fr);
-    gap: 1.25rem;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    grid-auto-rows: minmax(0, auto);
+    gap: 1.1rem;
     align-content: start;
     min-height: 0;
 }
@@ -307,57 +394,65 @@ main {
 }
 
 .tab-body.tight {
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
 }
 
 .tab-body > .card {
-    height: 100%;
+    height: auto;
 }
 
 .card {
     background: rgba(15, 23, 42, 0.72);
-    border: 1px solid rgba(148, 163, 184, 0.2);
-    border-radius: 1rem;
-    padding: 1.25rem 1.35rem;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 0.95rem;
+    padding: 1.1rem 1.25rem;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
-    box-shadow: inset 0 0 0 1px rgba(94, 234, 212, 0.03);
+    gap: 0.9rem;
+    box-shadow: inset 0 0 0 1px rgba(94, 234, 212, 0.04);
 }
 
 .card h2 {
     margin: 0;
-    font-size: 1.1rem;
+    font-size: 1.05rem;
     font-weight: 600;
+    letter-spacing: -0.01em;
     color: #f8fafc;
+}
+
+.card h2 + .helper-text {
+    margin-top: -0.35rem;
 }
 
 .helper-text {
     margin: 0;
     font-size: 0.85rem;
-    color: rgba(226, 232, 240, 0.7);
+    color: rgba(226, 232, 240, 0.68);
+    line-height: 1.4;
 }
 
 .form-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-    gap: 0.85rem 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 0.8rem 1rem;
 }
 
 label {
     display: flex;
     flex-direction: column;
-    gap: 0.5rem;
+    gap: 0.45rem;
     font-size: 0.9rem;
+    font-weight: 500;
+    color: rgba(226, 232, 240, 0.86);
 }
 
 input[type="text"],
 input[type="password"],
 textarea,
 select {
-    background: rgba(10, 14, 26, 0.88);
-    border: 1px solid rgba(148, 163, 184, 0.28);
-    border-radius: 0.75rem;
+    background: rgba(10, 14, 26, 0.9);
+    border: 1px solid rgba(148, 163, 184, 0.26);
+    border-radius: 0.7rem;
     padding: 0.6rem 0.75rem;
     color: #e2e8f0;
     font-size: 0.95rem;
@@ -367,7 +462,7 @@ select {
 
 input::placeholder,
 textarea::placeholder {
-    color: rgba(148, 163, 184, 0.6);
+    color: rgba(148, 163, 184, 0.55);
 }
 
 input:focus,
@@ -375,31 +470,31 @@ textarea:focus,
 select:focus {
     outline: none;
     border-color: rgba(59, 130, 246, 0.65);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.22);
 }
 
 textarea {
     width: 100%;
-    min-height: 5.75rem;
+    min-height: 5.5rem;
     max-height: 9rem;
-    resize: none;
+    resize: vertical;
 }
 
 textarea.tall {
-    min-height: 8.5rem;
+    min-height: 8rem;
 }
 
 .small-buttons {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.75rem;
+    gap: 0.65rem;
 }
 
 button.action {
-    padding: 0.65rem 1.15rem;
+    padding: 0.6rem 1.05rem;
     border: none;
-    border-radius: 0.75rem;
-    background: linear-gradient(135deg, rgba(37, 99, 235, 0.92), rgba(14, 165, 233, 0.9));
+    border-radius: 0.7rem;
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.92), rgba(14, 165, 233, 0.88));
     color: #f8fafc;
     font-weight: 600;
     cursor: pointer;
@@ -407,39 +502,41 @@ button.action {
 }
 
 button.action:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 14px 28px rgba(37, 99, 235, 0.35);
+    transform: translateY(-1px);
+    box-shadow: 0 12px 24px rgba(37, 99, 235, 0.3);
 }
 
 button.secondary {
     background: rgba(30, 41, 59, 0.85);
     color: rgba(226, 232, 240, 0.9);
+    border: 1px solid rgba(148, 163, 184, 0.32);
 }
 
 .outputs {
-    background: rgba(8, 11, 23, 0.85);
+    background: rgba(8, 11, 23, 0.88);
     border: 1px solid rgba(148, 163, 184, 0.25);
-    border-radius: 0.85rem;
-    padding: 1rem;
+    border-radius: 0.8rem;
+    padding: 0.95rem;
     white-space: pre-wrap;
     word-break: break-word;
     font-family: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
     font-size: 0.9rem;
+    line-height: 1.4;
 }
 
 .qr-container {
     display: flex;
     align-items: flex-start;
-    gap: 1.5rem;
+    gap: 1.1rem;
     flex-wrap: wrap;
 }
 
 .qr-container img {
     background: #f8fafc;
-    padding: 0.75rem;
-    border-radius: 1.1rem;
-    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.4);
-    max-width: 220px;
+    padding: 0.65rem;
+    border-radius: 1rem;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.4);
+    max-width: 200px;
 }
 
 .qr-container textarea {
@@ -448,23 +545,23 @@ button.secondary {
 
 .auth-status {
     font-size: 0.9rem;
-    color: rgba(148, 163, 184, 0.9);
+    color: rgba(148, 163, 184, 0.88);
 }
 
 .activity-drawer {
     position: absolute;
-    right: 2.25rem;
-    bottom: 2.25rem;
+    right: 1.85rem;
+    bottom: 1.85rem;
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: 0.75rem;
+    gap: 0.65rem;
 }
 
 .activity-button {
-    padding: 0.55rem 0.9rem;
+    padding: 0.5rem 0.85rem;
     border-radius: 999px;
-    border: 1px solid rgba(59, 130, 246, 0.6);
+    border: 1px solid rgba(59, 130, 246, 0.55);
     background: rgba(15, 23, 42, 0.75);
     color: rgba(191, 219, 254, 0.95);
     font-weight: 600;
@@ -478,16 +575,16 @@ button.secondary {
 }
 
 .logs-panel {
-    width: 340px;
-    max-height: 280px;
-    background: rgba(15, 23, 42, 0.9);
-    border-radius: 1rem;
-    padding: 1.1rem;
+    width: 330px;
+    max-height: 260px;
+    background: rgba(15, 23, 42, 0.92);
+    border-radius: 0.95rem;
+    padding: 1rem;
     border: 1px solid rgba(148, 163, 184, 0.22);
-    box-shadow: 0 18px 32px rgba(2, 6, 23, 0.55);
+    box-shadow: 0 16px 30px rgba(2, 6, 23, 0.55);
     display: flex;
     flex-direction: column;
-    gap: 0.65rem;
+    gap: 0.6rem;
 }
 
 .logs-panel h3 {
@@ -502,12 +599,23 @@ button.secondary {
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 0.55rem;
+    gap: 0.5rem;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(59, 130, 246, 0.45) transparent;
+}
+
+.log-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+
+.log-scroll::-webkit-scrollbar-thumb {
+    background: rgba(59, 130, 246, 0.45);
+    border-radius: 999px;
 }
 
 .log-entry {
-    padding: 0.6rem 0.75rem;
-    border-radius: 0.7rem;
+    padding: 0.55rem 0.7rem;
+    border-radius: 0.65rem;
     background: rgba(30, 41, 59, 0.78);
     border: 1px solid transparent;
     font-size: 0.9rem;
@@ -582,6 +690,8 @@ fn App() -> Element {
     let http_body = use_signal(String::new);
     let http_response = use_signal(String::new);
 
+    let current_network_label = { network_mode.read().label() };
+
     let show_logs_value = *show_logs.read();
     let show_logs_label = if show_logs_value {
         "Hide activity"
@@ -607,6 +717,10 @@ fn App() -> Element {
                     p { class: "subtitle", "A tidy cockpit for every Pubky homeserver workflow." }
                 }
                 div { class: "header-controls",
+                    div { class: "network-summary",
+                        span { class: "summary-label", "Network" }
+                        span { class: "summary-value", "{current_network_label}" }
+                    }
                     div { class: "network-toggle",
                         for mode in NetworkMode::ALL {
                             NetworkToggleOption { network_mode: network_mode.clone(), mode }

@@ -212,24 +212,6 @@ header h1 {
     color: rgba(226, 232, 240, 0.76);
 }
 
-.header-badges {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-}
-
-.badge {
-    padding: 0.35rem 0.75rem;
-    border-radius: 999px;
-    background: rgba(30, 41, 59, 0.8);
-    border: 1px solid rgba(94, 234, 212, 0.25);
-    color: rgba(191, 219, 254, 0.92);
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
-}
-
 .header-controls {
     display: flex;
     align-items: flex-start;
@@ -622,11 +604,6 @@ fn App() -> Element {
                         h1 { "Pubky Swiss Knife" }
                     }
                     p { class: "subtitle", "A tidy cockpit for every Pubky homeserver workflow." }
-                    div { class: "header-badges",
-                        span { class: "badge", "Fixed 1220×820 window" }
-                        span { class: "badge", "No-scroll layout" }
-                        span { class: "badge", "Instant activity drawer" }
-                    }
                 }
                 div { class: "header-controls",
                     div { class: "network-toggle",

@@ -14,10 +14,15 @@
 
 ## Projects
 
-- **[Pubky Swiss Knife](pubky-swiss-knife)** - A multi-tool for anything Pubky. Built using the Pubky rust SDK and Dioxus. [Initial Codex prompt here](https://chatgpt.com/s/cd_68e9a87740108191936e11721d314fea)
-  <img width="1210" height="673" alt="image" src="https://github.com/user-attachments/assets/41218313-0177-4134-bc79-d611fbd9399d" />
-- **[Portable Homeserver](portable-homeserver)** - Embedded multiplatform mainnet and testnet homeserver. Built using the Pubky rust SDK and Dioxus. [Initial Codex prompt here](https://chatgpt.com/s/cd_68e9b9732a688191a61e6ff03a49cbdf).
-  <img width="760" height="1014" alt="image" src="https://github.com/user-attachments/assets/0929752c-7004-423f-a8c7-07bdd0b92852" />
+### [Pubky Swiss Knife](pubky-swiss-knife)
+
+A multi-tool for anything Pubky. Built using the Pubky rust SDK and Dioxus. [Initial Codex prompt here](https://chatgpt.com/s/cd_68e9a87740108191936e11721d314fea)
+<img width="1210" height="673" alt="image" src="https://github.com/user-attachments/assets/41218313-0177-4134-bc79-d611fbd9399d" />
+
+### [Portable Homeserver](portable-homeserver)
+
+Embedded multiplatform mainnet and testnet homeserver. Built using the Pubky rust SDK and Dioxus. [Initial Codex prompt here](https://chatgpt.com/s/cd_68e9b9732a688191a61e6ff03a49cbdf).
+<img width="1067" height="562" alt="image" src="https://github.com/user-attachments/assets/d99cafca-c63a-4365-9c4c-ee7c800fa3f3" />
 
 ## Agent Context
 

@@ -291,7 +291,6 @@ fn queue_pubky_build(
 
     let mut setter = pubky_state;
     spawn({
-        let network_signal = network_signal;
         async move {
             match crate::utils::pubky::build_pubky_facade(target).await {
                 Ok(pubky) => {

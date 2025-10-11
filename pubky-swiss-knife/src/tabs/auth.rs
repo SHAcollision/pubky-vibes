@@ -73,7 +73,7 @@ pub fn render_auth_tab(
                         input {
                             value: caps_value,
                             oninput: move |evt| caps_binding.set(evt.value()),
-                            title: "Capability string consumed by PubkyAuthFlow::builder and Capabilities::try_from",
+                            title: "Describe the permissions you're requesting, using the usual capability syntax",
                             placeholder: "Example: /pub/app/:rw"
                         }
                     }
@@ -82,7 +82,7 @@ pub fn render_auth_tab(
                         input {
                             value: relay_value,
                             oninput: move |evt| relay_binding.set(evt.value()),
-                            title: "Optional relay URL passed to PubkyAuthFlow::builder::relay",
+                            title: "Optional relay URL to direct this authorization through",
                             placeholder: "https://your-relay.example/link/"
                         }
                     }
@@ -90,7 +90,7 @@ pub fn render_auth_tab(
                 div { class: "small-buttons",
                     button {
                         class: "action",
-                        title: "Start PubkyAuthFlow::start to mint a pubkyauth:// authorization URL",
+                        title: "Create an authorization link and QR code with the current settings",
                         onclick: move |_| {
                         let caps_text = start_caps_signal.read().clone();
                         if caps_text.trim().is_empty() {
@@ -151,7 +151,7 @@ pub fn render_auth_tab(
                     }
                     button {
                         class: "action",
-                        title: "Wait on PubkyAuthFlow::await_approval to exchange the link for a session",
+                        title: "Wait for the other party to approve and retrieve the resulting session",
                         onclick: move |_| {
                         let maybe_flow = {
                             let mut guard = await_flow_signal.write();
@@ -198,7 +198,7 @@ pub fn render_auth_tab(
                     }
                     button {
                         class: "action secondary",
-                        title: "Discard the in-progress PubkyAuthFlow without contacting the relay",
+                        title: "Cancel the current authorization request",
                         onclick: move |_| {
                             let had_flow = {
                                 let mut guard = cancel_flow_signal.write();
@@ -228,7 +228,7 @@ pub fn render_auth_tab(
                             class: "tall",
                             readonly: true,
                             value: url_value,
-                            title: "Share this pubkyauth:// URL with a signer to request delegated capabilities",
+                            title: "Share this link with someone to request delegated capabilities",
                             placeholder: "Generated pubkyauth:// link"
                         }
                     }
@@ -244,7 +244,7 @@ pub fn render_auth_tab(
                             class: "tall",
                             value: request_value,
                             oninput: move |evt| request_binding.set(evt.value()),
-                            title: "Paste a pubkyauth:// URL received from another party for signer.approve_auth",
+                            title: "Paste a pubkyauth:// link you were given",
                             placeholder: "pubkyauth:///?caps=..."
                         }
                     }
@@ -252,7 +252,7 @@ pub fn render_auth_tab(
                 div { class: "small-buttons",
                     button {
                         class: "action",
-                        title: "Use signer.approve_auth to grant the requested capabilities",
+                        title: "Approve the request using your loaded key",
                         onclick: move |_| {
                             let url = approve_request_signal.read().clone();
                             if url.trim().is_empty() {

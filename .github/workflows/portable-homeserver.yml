@@ -1,0 +1,26 @@
+name: Portable Homeserver Checks
+
+on:
+  pull_request:
+    paths:
+      - 'portable-homeserver/**'
+      - '.github/workflows/portable-homeserver.yml'
+
+jobs:
+  lint:
+    name: Format, Check, and Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Check formatting
+        working-directory: portable-homeserver
+        run: cargo fmt -- --check
+      - name: Cargo check
+        working-directory: portable-homeserver
+        run: cargo check
+      - name: Cargo clippy
+        working-directory: portable-homeserver
+        run: cargo clippy -- -D warnings

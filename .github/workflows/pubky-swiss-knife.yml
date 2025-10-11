@@ -1,0 +1,26 @@
+name: Pubky Swiss Knife Checks
+
+on:
+  pull_request:
+    paths:
+      - 'pubky-swiss-knife/**'
+      - '.github/workflows/pubky-swiss-knife.yml'
+
+jobs:
+  lint:
+    name: Format, Check, and Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: Check formatting
+        working-directory: pubky-swiss-knife
+        run: cargo fmt -- --check
+      - name: Cargo check
+        working-directory: pubky-swiss-knife
+        run: cargo check
+      - name: Cargo clippy
+        working-directory: pubky-swiss-knife
+        run: cargo clippy -- -D warnings

@@ -13,6 +13,7 @@ pubky = "0.6.0-rc.6"
 url = "2.5"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 qrcode = "0.13"
+rfd = "0.14"
 
 [dev-dependencies]
 tempfile = "3"

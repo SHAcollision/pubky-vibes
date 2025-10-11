@@ -28,7 +28,7 @@ fn main() -> Result<()> {
                 WindowBuilder::new()
                     .with_title("Pubky Swiss Knife")
                     .with_inner_size(LogicalSize::new(1220.0, 820.0))
-                    .with_resizable(false),
+                    .with_min_inner_size(LogicalSize::new(900.0, 640.0)),
             ),
         )
         .launch(App);
@@ -156,7 +156,8 @@ html, body {
         radial-gradient(circle at 85% 0%, rgba(124, 58, 237, 0.18), transparent 45%),
         #020617;
     color: inherit;
-    overflow: hidden;
+    overflow-x: hidden;
+    overflow-y: auto;
 }
 
 body {
@@ -244,7 +245,7 @@ header h1 {
 main {
     flex: 1;
     display: grid;
-    grid-template-columns: 220px 1fr;
+    grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
     gap: 1.5rem;
     min-height: 0;
 }
@@ -295,8 +296,8 @@ main {
 .tab-body {
     flex: 1;
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-auto-rows: minmax(0, 1fr);
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    grid-auto-rows: minmax(0, auto);
     gap: 1.25rem;
     align-content: start;
     min-height: 0;
@@ -307,7 +308,7 @@ main {
 }
 
 .tab-body.tight {
-    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
 .tab-body > .card {
@@ -529,6 +530,78 @@ button.secondary {
 
 .span-2 {
     grid-column: span 2;
+}
+
+@media (max-width: 1200px) {
+    .app {
+        padding: 1.5rem 1.75rem 2rem;
+    }
+
+    main {
+        grid-template-columns: minmax(210px, 250px) minmax(0, 1fr);
+    }
+}
+
+@media (max-width: 1000px) {
+    .app {
+        padding: 1.25rem 1.5rem 1.75rem;
+        gap: 1.25rem;
+    }
+
+    header {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 1.25rem;
+    }
+
+    .header-controls {
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 0.85rem;
+    }
+
+    main {
+        grid-template-columns: minmax(0, 1fr);
+        grid-auto-rows: auto;
+    }
+
+    .tabs {
+        flex-direction: row;
+        align-items: center;
+        overflow-x: auto;
+        padding-bottom: 0.25rem;
+    }
+
+    .tabs button {
+        flex: 1 1 200px;
+        white-space: nowrap;
+    }
+
+    .panel {
+        max-height: none;
+    }
+}
+
+@media (max-width: 720px) {
+    .app {
+        padding: 1.1rem 1.25rem 1.5rem;
+        gap: 1rem;
+    }
+
+    .brand-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .tab-body,
+    .tab-body.tight {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .span-2 {
+        grid-column: auto;
+    }
 }
 
 .status-chip {

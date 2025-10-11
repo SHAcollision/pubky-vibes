@@ -42,6 +42,8 @@ jobs:
             libxdo-dev
           sudo apt-get install -y libwebkit2gtk-4.1-dev || sudo apt-get install -y libwebkit2gtk-4.0-dev
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: pubky-swiss-knife
       - name: Cargo check
         working-directory: pubky-swiss-knife
         run: cargo check
@@ -63,6 +65,8 @@ jobs:
             libxdo-dev
           sudo apt-get install -y libwebkit2gtk-4.1-dev || sudo apt-get install -y libwebkit2gtk-4.0-dev
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: pubky-swiss-knife
       - name: Cargo clippy
         working-directory: pubky-swiss-knife
         run: cargo clippy -- -D warnings
@@ -82,6 +86,8 @@ jobs:
             libxdo-dev
           sudo apt-get install -y libwebkit2gtk-4.1-dev || sudo apt-get install -y libwebkit2gtk-4.0-dev
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: pubky-swiss-knife
       - name: Cargo test
         working-directory: pubky-swiss-knife
         run: cargo test

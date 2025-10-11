@@ -67,7 +67,10 @@ pub fn render_keys_tab(
                 h2 { "Key material" }
                 p { class: "helper-text", "Generate or import keys. Current public key: {current_public}." }
                 div { class: "small-buttons",
-                    button { class: "action", onclick: move |_| {
+                    button {
+                        class: "action",
+                        title: "Create a fresh Ed25519 Keypair with pubky::Keypair::random and load it into the tool",
+                        onclick: move |_| {
                             let kp = Keypair::random();
                             generate_secret_input.set(STANDARD.encode(kp.secret_key()));
                             generate_keypair.set(Some(kp.clone()));
@@ -75,7 +78,10 @@ pub fn render_keys_tab(
                         },
                         "Generate random key"
                     }
-                    button { class: "action secondary", onclick: move |_| {
+                    button {
+                        class: "action secondary",
+                        title: "Copy the active signer secret (as base64) into the editor without touching disk",
+                        onclick: move |_| {
                             if let Some(kp) = export_keypair.read().as_ref() {
                                 export_secret_input.set(STANDARD.encode(kp.secret_key()));
                                 push_log(export_logs, LogLevel::Info, "Secret key exported to editor");
@@ -93,12 +99,16 @@ pub fn render_keys_tab(
                             class: "tall",
                             value: secret_value,
                             oninput: move |evt| secret_input_binding.set(evt.value()),
+                            title: "Paste or edit the base64-encoded 32-byte secret understood by pubky::Keypair",
                             placeholder: "Base64 encoded 32-byte secret key",
                         }
                     }
                 }
                 div { class: "small-buttons",
-                    button { class: "action", onclick: move |_| {
+                    button {
+                        class: "action",
+                        title: "Decode the provided secret with utils::recovery::decode_secret_key and activate the signer",
+                        onclick: move |_| {
                             let secret = import_secret_signal.read().clone();
                             match decode_secret_key(&secret) {
                                 Ok(kp) => {
@@ -121,6 +131,7 @@ pub fn render_keys_tab(
                             span { class: "file-path-display", "{recovery_path_display}" }
                             button {
                                 class: "action secondary",
+                                title: "Browse for an existing PKARR/pubky recovery file to use with load_keypair_from_recovery",
                                 onclick: move |_| {
                                     if let Some(path) = FileDialog::new().pick_file() {
                                         choose_recovery_path_signal.set(path.display().to_string());
@@ -132,11 +143,19 @@ pub fn render_keys_tab(
                     }
                     label {
                         "Passphrase"
-                        input { r#type: "password", value: recovery_pass_value.clone(), oninput: move |evt| recovery_pass_binding.set(evt.value()) }
+                        input {
+                            r#type: "password",
+                            value: recovery_pass_value.clone(),
+                            oninput: move |evt| recovery_pass_binding.set(evt.value()),
+                            title: "Passphrase used to decrypt PKARR recovery bundles via load_keypair_from_recovery",
+                        }
                     }
                 }
                 div { class: "small-buttons",
-                    button { class: "action", onclick: move |_| {
+                    button {
+                        class: "action",
+                        title: "Open and decrypt a PKARR recovery file with utils::recovery::load_keypair_from_recovery",
+                        onclick: move |_| {
                             let raw_path = load_path_signal.read().clone();
                             let passphrase = load_pass_signal.read().clone();
                             let mut immediate_path_signal = load_path_signal;
@@ -187,7 +206,10 @@ pub fn render_keys_tab(
                         },
                         "Load from recovery file"
                     }
-                    button { class: "action secondary", onclick: move |_| {
+                    button {
+                        class: "action secondary",
+                        title: "Encrypt the active keypair into a PKARR-compatible bundle via save_keypair_to_recovery_file",
+                        onclick: move |_| {
                             if let Some(kp) = save_keypair_signal.read().as_ref().cloned() {
                                 let raw_path = save_path_signal.read().clone();
                                 let mut immediate_path_signal = save_path_signal;

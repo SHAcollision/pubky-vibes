@@ -73,6 +73,7 @@ pub fn render_auth_tab(
                         input {
                             value: caps_value,
                             oninput: move |evt| caps_binding.set(evt.value()),
+                            title: "Capability string consumed by PubkyAuthFlow::builder and Capabilities::try_from",
                             placeholder: "Example: /pub/app/:rw"
                         }
                     }
@@ -81,12 +82,16 @@ pub fn render_auth_tab(
                         input {
                             value: relay_value,
                             oninput: move |evt| relay_binding.set(evt.value()),
+                            title: "Optional relay URL passed to PubkyAuthFlow::builder::relay",
                             placeholder: "https://your-relay.example/link/"
                         }
                     }
                 }
                 div { class: "small-buttons",
-                    button { class: "action", onclick: move |_| {
+                    button {
+                        class: "action",
+                        title: "Start PubkyAuthFlow::start to mint a pubkyauth:// authorization URL",
+                        onclick: move |_| {
                         let caps_text = start_caps_signal.read().clone();
                         if caps_text.trim().is_empty() {
                             push_log(start_logs.clone(), LogLevel::Error, "Provide capabilities for the request");
@@ -141,10 +146,13 @@ pub fn render_auth_tab(
                                 }
                             }
                         });
-                    },
+                        },
                     "Start auth flow",
                     }
-                    button { class: "action", onclick: move |_| {
+                    button {
+                        class: "action",
+                        title: "Wait on PubkyAuthFlow::await_approval to exchange the link for a session",
+                        onclick: move |_| {
                         let maybe_flow = {
                             let mut guard = await_flow_signal.write();
                             guard.take()
@@ -185,23 +193,26 @@ pub fn render_auth_tab(
                         } else {
                             push_log(await_logs, LogLevel::Error, "Start an auth flow first");
                         }
-                    },
+                        },
                     "Await approval",
                     }
-                    button { class: "action secondary", onclick: move |_| {
-                        let had_flow = {
-                            let mut guard = cancel_flow_signal.write();
-                            guard.take().is_some()
-                        };
-                        cancel_status_signal.set(String::new());
-                        cancel_url_signal.set(String::new());
-                        cancel_qr_signal.set(None);
-                        if had_flow {
-                            push_log(cancel_logs.clone(), LogLevel::Info, "Auth flow cancelled");
-                        } else {
-                            push_log(cancel_logs, LogLevel::Error, "No auth flow to cancel");
-                        }
-                    },
+                    button {
+                        class: "action secondary",
+                        title: "Discard the in-progress PubkyAuthFlow without contacting the relay",
+                        onclick: move |_| {
+                            let had_flow = {
+                                let mut guard = cancel_flow_signal.write();
+                                guard.take().is_some()
+                            };
+                            cancel_status_signal.set(String::new());
+                            cancel_url_signal.set(String::new());
+                            cancel_qr_signal.set(None);
+                            if had_flow {
+                                push_log(cancel_logs.clone(), LogLevel::Info, "Auth flow cancelled");
+                            } else {
+                                push_log(cancel_logs, LogLevel::Error, "No auth flow to cancel");
+                            }
+                        },
                     "Cancel",
                     }
                 }
@@ -217,6 +228,7 @@ pub fn render_auth_tab(
                             class: "tall",
                             readonly: true,
                             value: url_value,
+                            title: "Share this pubkyauth:// URL with a signer to request delegated capabilities",
                             placeholder: "Generated pubkyauth:// link"
                         }
                     }
@@ -232,53 +244,57 @@ pub fn render_auth_tab(
                             class: "tall",
                             value: request_value,
                             oninput: move |evt| request_binding.set(evt.value()),
+                            title: "Paste a pubkyauth:// URL received from another party for signer.approve_auth",
                             placeholder: "pubkyauth:///?caps=..."
                         }
                     }
                 }
                 div { class: "small-buttons",
-                    button { class: "action", onclick: move |_| {
-                        let url = approve_request_signal.read().clone();
-                        if url.trim().is_empty() {
-                            push_log(approve_logs.clone(), LogLevel::Error, "Paste a pubkyauth:// URL to approve");
-                            return;
-                        }
-                        let maybe_pubky = { approve_pubky_state.read().facade() };
-                        let Some(pubky) = maybe_pubky else {
-                            push_log(
-                                approve_logs.clone(),
-                                LogLevel::Info,
-                                "Pubky facade is still starting up. Try again shortly.",
-                            );
-                            return;
-                        };
-                        if let Some(kp) = approve_keypair.read().as_ref().cloned() {
-                            let url_string = url.trim().to_string();
-                            let logs_task = approve_logs.clone();
-                            let pubky = pubky.clone();
-                            spawn(async move {
-                                let result = async move {
-                                    let signer = pubky.signer(kp.clone());
-                                    signer.approve_auth(&url_string).await?;
-                                    Ok::<_, anyhow::Error>(format!(
-                                        "Approved auth request with {}",
-                                        kp.public_key()
-                                    ))
-                                };
-                                match result.await {
-                                    Ok(msg) => push_log(logs_task, LogLevel::Success, msg),
-                                    Err(err) => push_log(
-                                        logs_task,
-                                        LogLevel::Error,
-                                        format!("Failed to approve auth request: {err}"),
-                                    ),
-                                }
-                            });
-                        } else {
-                            push_log(approve_logs, LogLevel::Error, "Load or generate a keypair first");
-                        }
-                    },
-                    "Approve request",
+                    button {
+                        class: "action",
+                        title: "Use signer.approve_auth to grant the requested capabilities",
+                        onclick: move |_| {
+                            let url = approve_request_signal.read().clone();
+                            if url.trim().is_empty() {
+                                push_log(approve_logs.clone(), LogLevel::Error, "Paste a pubkyauth:// URL to approve");
+                                return;
+                            }
+                            let maybe_pubky = { approve_pubky_state.read().facade() };
+                            let Some(pubky) = maybe_pubky else {
+                                push_log(
+                                    approve_logs.clone(),
+                                    LogLevel::Info,
+                                    "Pubky facade is still starting up. Try again shortly.",
+                                );
+                                return;
+                            };
+                            if let Some(kp) = approve_keypair.read().as_ref().cloned() {
+                                let url_string = url.trim().to_string();
+                                let logs_task = approve_logs.clone();
+                                let pubky = pubky.clone();
+                                spawn(async move {
+                                    let result = async move {
+                                        let signer = pubky.signer(kp.clone());
+                                        signer.approve_auth(&url_string).await?;
+                                        Ok::<_, anyhow::Error>(format!(
+                                            "Approved auth request with {}",
+                                            kp.public_key()
+                                        ))
+                                    };
+                                    match result.await {
+                                        Ok(msg) => push_log(logs_task, LogLevel::Success, msg),
+                                        Err(err) => push_log(
+                                            logs_task,
+                                            LogLevel::Error,
+                                            format!("Failed to approve auth request: {err}"),
+                                        ),
+                                    }
+                                });
+                            } else {
+                                push_log(approve_logs, LogLevel::Error, "Load or generate a keypair first");
+                            }
+                        },
+                        "Approve request",
                     }
                 }
             }

@@ -12,10 +12,18 @@ pub fn NetworkToggleOption(
     let mut setter = network_mode;
     rsx! {
         label {
+            title: format_args!(
+                "Switch Pubky facade to the {} network, matching the client constructors in pubky::PubkyHttpClient",
+                mode.label()
+            ),
             input {
                 r#type: "radio",
                 name: "network-mode",
                 checked: is_selected,
+                title: format_args!(
+                    "Use {} endpoints for all homeserver and HTTP calls",
+                    mode.label()
+                ),
                 onchange: move |_| {
                     setter.set(mode);
                     on_select.call(mode);
@@ -34,6 +42,10 @@ pub fn TabButton(tab: Tab, active_tab: Signal<Tab>) -> Element {
     rsx! {
         button {
             class: class_name,
+            title: format_args!(
+                "Open the {} tools – a quick tour of the related pubky APIs",
+                tab.label()
+            ),
             onclick: move |_| setter.set(tab),
             "{tab.label()}"
         }

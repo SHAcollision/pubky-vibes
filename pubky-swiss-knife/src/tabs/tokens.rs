@@ -1,24 +1,26 @@
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use dioxus::prelude::*;
-use pubky::{AuthToken, Capabilities, Keypair};
+use pubky::{AuthToken, Capabilities};
 
-use crate::utils::logging::{LogEntry, LogLevel, push_log};
+use crate::tabs::TokensTabState;
+use crate::utils::logging::ActivityLog;
 
-pub fn render_tokens_tab(
-    keypair: Signal<Option<Keypair>>,
-    token_caps_input: Signal<String>,
-    token_output: Signal<String>,
-    logs: Signal<Vec<LogEntry>>,
-) -> Element {
-    let caps_value = { token_caps_input.read().clone() };
-    let token_value = { token_output.read().clone() };
+pub fn render_tokens_tab(state: TokensTabState, logs: ActivityLog) -> Element {
+    let TokensTabState {
+        keypair,
+        capabilities,
+        output,
+    } = state;
 
-    let mut token_caps_binding = token_caps_input;
+    let caps_value = { capabilities.read().clone() };
+    let token_value = { output.read().clone() };
 
-    let sign_keypair = keypair;
-    let sign_caps = token_caps_input;
-    let mut sign_token = token_output;
-    let sign_logs = logs;
+    let mut token_caps_binding = capabilities.clone();
+
+    let sign_keypair = keypair.clone();
+    let sign_caps = capabilities.clone();
+    let mut sign_token = output.clone();
+    let sign_logs = logs.clone();
 
     rsx! {
         div { class: "tab-body single-column",
@@ -47,15 +49,15 @@ pub fn render_tokens_tab(
                                     Ok(capabilities) => {
                                         let token = AuthToken::sign(kp, capabilities.clone());
                                         sign_token.set(STANDARD.encode(token.serialize()));
-                                        push_log(sign_logs, LogLevel::Success, format!(
+                                        sign_logs.success(format!(
                                             "Signed token for {} with caps {capabilities}",
                                             kp.public_key()
                                         ));
                                     }
-                                    Err(err) => push_log(sign_logs, LogLevel::Error, format!("Invalid capabilities: {err}")),
+                                    Err(err) => sign_logs.error(format!("Invalid capabilities: {err}")),
                                 }
                             } else {
-                                push_log(sign_logs, LogLevel::Error, "Load a key before signing");
+                                sign_logs.error("Load a key before signing");
                             }
                         },
                         "Sign token"

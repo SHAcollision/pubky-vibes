@@ -2,9 +2,9 @@ use anyhow::Result;
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use dioxus::prelude::*;
 use pubky::Keypair;
-use rfd::FileDialog;
 use std::path::PathBuf;
 
+use crate::utils::file_picker;
 use crate::utils::logging::{LogEntry, LogLevel, push_log};
 use crate::utils::recovery::{
     decode_secret_key, load_keypair_from_recovery, normalize_pkarr_path,
@@ -122,7 +122,7 @@ pub fn render_keys_tab(
                             button {
                                 class: "action secondary",
                                 onclick: move |_| {
-                                    if let Some(path) = FileDialog::new().pick_file() {
+                                    if let Some(path) = file_picker::pick_file() {
                                         choose_recovery_path_signal.set(path.display().to_string());
                                     }
                                 },
@@ -139,16 +139,16 @@ pub fn render_keys_tab(
                     button { class: "action", onclick: move |_| {
                             let raw_path = load_path_signal.read().clone();
                             let passphrase = load_pass_signal.read().clone();
-                            let mut immediate_path_signal = load_path_signal.clone();
-                            let chosen_path = if raw_path.trim().is_empty() {
-                                FileDialog::new().pick_file().map(|path| {
-                                    let display = path.display().to_string();
-                                    immediate_path_signal.set(display.clone());
-                                    display
-                                })
-                            } else {
-                                Some(raw_path.clone())
-                            };
+                                let mut immediate_path_signal = load_path_signal.clone();
+                                let chosen_path = if raw_path.trim().is_empty() {
+                                    file_picker::pick_file().map(|path| {
+                                        let display = path.display().to_string();
+                                        immediate_path_signal.set(display.clone());
+                                        display
+                                    })
+                                } else {
+                                    Some(raw_path.clone())
+                                };
                             if let Some(selected_path) = chosen_path {
                                 let mut keypair_signal = load_keypair_signal.clone();
                                 let mut secret_signal = load_secret_signal.clone();
@@ -192,7 +192,7 @@ pub fn render_keys_tab(
                                 let raw_path = save_path_signal.read().clone();
                                 let mut immediate_path_signal = save_path_signal.clone();
                                 let chosen_path = if raw_path.trim().is_empty() {
-                                    FileDialog::new().save_file().map(|path| {
+                                    file_picker::save_file().map(|path| {
                                         let display = path.display().to_string();
                                         immediate_path_signal.set(display.clone());
                                         display

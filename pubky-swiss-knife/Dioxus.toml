@@ -1,0 +1,12 @@
+[application]
+asset_dir = "assets"
+
+[web.app]
+title = "Pubky Swiss Knife"
+
+[web.resource]
+style = ["./assets/style.css"]
+
+[bundle]
+identifier = "org.pubky.swissknife"
+publisher = "Pubky"

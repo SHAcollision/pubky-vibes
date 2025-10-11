@@ -1,3 +1,4 @@
+pub mod file_picker;
 pub mod http;
 pub mod logging;
 pub mod pubky;

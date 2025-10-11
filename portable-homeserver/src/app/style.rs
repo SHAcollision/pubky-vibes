@@ -33,12 +33,12 @@ main.app {
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 32px;
-    padding: 40px 44px;
-    border-radius: 28px;
+    gap: 20px;
+    padding: 22px 26px;
+    border-radius: 24px;
     background: linear-gradient(135deg, rgba(3, 24, 40, 0.92), rgba(6, 46, 68, 0.78));
     border: 1px solid rgba(0, 194, 255, 0.28);
-    box-shadow: 0 32px 60px rgba(6, 32, 56, 0.35);
+    box-shadow: 0 24px 48px rgba(6, 32, 56, 0.32);
     overflow: hidden;
 }
 
@@ -52,31 +52,31 @@ main.app {
 }
 
 .hero h1 {
-    font-size: clamp(2.75rem, 4vw, 3.4rem);
-    margin: 0 0 12px;
+    font-size: clamp(2.1rem, 3.2vw, 2.8rem);
+    margin: 0 0 10px;
     letter-spacing: -0.01em;
 }
 
 .hero img {
-    width: clamp(200px, 26vw, 260px);
-    height: clamp(200px, 26vw, 260px);
-    filter: drop-shadow(0 16px 48px rgba(0, 205, 255, 0.55));
+    width: clamp(120px, 18vw, 160px);
+    height: clamp(120px, 18vw, 160px);
+    filter: drop-shadow(0 12px 36px rgba(0, 205, 255, 0.5));
     z-index: 1;
 }
 
 .hero-content {
     display: flex;
     flex-direction: column;
-    gap: 14px;
-    max-width: 480px;
+    gap: 10px;
+    max-width: 440px;
     z-index: 1;
 }
 
 .hero p {
     margin: 0;
-    font-size: 1.2rem;
+    font-size: 1rem;
     color: rgba(237, 246, 255, 0.78);
-    line-height: 1.6;
+    line-height: 1.5;
 }
 
 .controls {

@@ -1,3 +1,5 @@
+mod utils;
+
 use anyhow::{Context, Result, anyhow};
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use dioxus::LaunchBuilder;
@@ -14,9 +16,12 @@ use pubky::{
 use qrcode::{QrCode, render::svg};
 use reqwest::header::HeaderName;
 use rfd::FileDialog;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 use url::Url;
+
+use crate::utils::settings::{AppSettings, SettingsWriter, persist_update};
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -35,8 +40,8 @@ fn main() -> Result<()> {
     Ok(())
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum NetworkMode {
+#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Debug)]
+pub enum NetworkMode {
     Mainnet,
     Testnet,
 }
@@ -52,17 +57,33 @@ impl NetworkMode {
     }
 }
 
+impl Default for NetworkMode {
+    fn default() -> Self {
+        NetworkMode::Mainnet
+    }
+}
+
 #[component]
-fn NetworkToggleOption(network_mode: Signal<NetworkMode>, mode: NetworkMode) -> Element {
+fn NetworkToggleOption(
+    network_mode: Signal<NetworkMode>,
+    mode: NetworkMode,
+    settings: Signal<AppSettings>,
+    writer: Signal<SettingsWriter>,
+) -> Element {
     let is_selected = *network_mode.read() == mode;
     let mut setter = network_mode;
+    let settings_signal = settings;
+    let writer_signal = writer;
     rsx! {
         label {
             input {
                 r#type: "radio",
                 name: "network-mode",
                 checked: is_selected,
-                onchange: move |_| setter.set(mode),
+                onchange: move |_| {
+                    setter.set(mode);
+                    persist_update(settings_signal, writer_signal, |state| state.network_mode = mode);
+                },
             }
             span { "{mode.label()}" }
         }
@@ -543,8 +564,28 @@ button.secondary {
 
 #[allow(non_snake_case)]
 fn App() -> Element {
+    let settings_state = use_signal(AppSettings::load_or_default);
+    let settings_writer = use_signal(SettingsWriter::new);
+    let initial_settings = { settings_state.read().clone() };
+    let AppSettings {
+        network_mode: initial_network_mode,
+        homeserver: initial_homeserver,
+        signup_code: initial_signup_code,
+        token_capabilities: initial_token_caps,
+        auth_capabilities: initial_auth_caps,
+        auth_relay: initial_auth_relay,
+        auth_request: initial_auth_request,
+        storage_path: initial_storage_path,
+        storage_body: initial_storage_body,
+        public_resource: initial_public_resource,
+        http_method: initial_http_method,
+        http_url: initial_http_url,
+        http_headers: initial_http_headers,
+        http_body: initial_http_body,
+    } = initial_settings;
+
     let active_tab = use_signal(|| Tab::Keys);
-    let network_mode = use_signal(|| NetworkMode::Mainnet);
+    let network_mode = use_signal(move || initial_network_mode);
     let logs = use_signal(|| Vec::<LogEntry>::new());
     let show_logs = use_signal(|| false);
 
@@ -553,33 +594,46 @@ fn App() -> Element {
     let recovery_path = use_signal(String::new);
     let recovery_passphrase = use_signal(String::new);
 
-    let token_caps_input = use_signal(|| String::from("/:rw"));
+    let token_caps_initial = initial_token_caps;
+    let token_caps_input = use_signal(move || token_caps_initial.clone());
     let token_output = use_signal(String::new);
 
     let session = use_signal(|| Option::<PubkySession>::None);
     let session_details = use_signal(String::new);
-    let homeserver_input = use_signal(String::new);
-    let signup_code_input = use_signal(String::new);
+    let homeserver_initial = initial_homeserver;
+    let homeserver_input = use_signal(move || homeserver_initial.clone());
+    let signup_initial = initial_signup_code;
+    let signup_code_input = use_signal(move || signup_initial.clone());
 
-    let auth_caps_input = use_signal(|| String::from("/:rw"));
-    let auth_relay_input = use_signal(String::new);
+    let auth_caps_initial = initial_auth_caps;
+    let auth_caps_input = use_signal(move || auth_caps_initial.clone());
+    let auth_relay_initial = initial_auth_relay;
+    let auth_relay_input = use_signal(move || auth_relay_initial.clone());
     let auth_url_output = use_signal(String::new);
     let auth_qr_data = use_signal(|| Option::<String>::None);
     let auth_status = use_signal(String::new);
     let auth_flow = use_signal(|| Option::<PubkyAuthFlow>::None);
-    let auth_request_input = use_signal(String::new);
+    let auth_request_initial = initial_auth_request;
+    let auth_request_input = use_signal(move || auth_request_initial.clone());
 
-    let storage_path = use_signal(|| String::from("/pub/"));
-    let storage_body = use_signal(String::new);
+    let storage_path_initial = initial_storage_path;
+    let storage_path = use_signal(move || storage_path_initial.clone());
+    let storage_body_initial = initial_storage_body;
+    let storage_body = use_signal(move || storage_body_initial.clone());
     let storage_response = use_signal(String::new);
 
-    let public_resource = use_signal(String::new);
+    let public_resource_initial = initial_public_resource;
+    let public_resource = use_signal(move || public_resource_initial.clone());
     let public_response = use_signal(String::new);
 
-    let http_method = use_signal(|| String::from("GET"));
-    let http_url = use_signal(|| String::from("https://"));
-    let http_headers = use_signal(String::new);
-    let http_body = use_signal(String::new);
+    let http_method_initial = initial_http_method;
+    let http_method = use_signal(move || http_method_initial.clone());
+    let http_url_initial = initial_http_url;
+    let http_url = use_signal(move || http_url_initial.clone());
+    let http_headers_initial = initial_http_headers;
+    let http_headers = use_signal(move || http_headers_initial.clone());
+    let http_body_initial = initial_http_body;
+    let http_body = use_signal(move || http_body_initial.clone());
     let http_response = use_signal(String::new);
 
     let show_logs_value = *show_logs.read();
@@ -609,7 +663,12 @@ fn App() -> Element {
                 div { class: "header-controls",
                     div { class: "network-toggle",
                         for mode in NetworkMode::ALL {
-                            NetworkToggleOption { network_mode: network_mode.clone(), mode }
+                            NetworkToggleOption {
+                                network_mode: network_mode.clone(),
+                                mode,
+                                settings: settings_state.clone(),
+                                writer: settings_writer.clone(),
+                            }
                         }
                     }
                 }
@@ -629,7 +688,14 @@ fn App() -> Element {
                             recovery_passphrase,
                             logs,
                         ),
-                        Tab::Tokens => render_tokens_tab(keypair, token_caps_input, token_output, logs),
+                        Tab::Tokens => render_tokens_tab(
+                            keypair,
+                            token_caps_input,
+                            token_output,
+                            logs,
+                            settings_state.clone(),
+                            settings_writer.clone(),
+                        ),
                         Tab::Sessions => render_sessions_tab(
                             network_mode,
                             keypair,
@@ -638,6 +704,8 @@ fn App() -> Element {
                             homeserver_input,
                             signup_code_input,
                             logs,
+                            settings_state.clone(),
+                            settings_writer.clone(),
                         ),
                         Tab::Auth => render_auth_tab(
                             network_mode,
@@ -652,6 +720,8 @@ fn App() -> Element {
                             auth_flow,
                             auth_request_input,
                             logs,
+                            settings_state.clone(),
+                            settings_writer.clone(),
                         ),
                         Tab::Storage => render_storage_tab(
                             network_mode,
@@ -662,6 +732,8 @@ fn App() -> Element {
                             public_resource,
                             public_response,
                             logs,
+                            settings_state.clone(),
+                            settings_writer.clone(),
                         ),
                         Tab::Http => render_http_tab(
                             network_mode,
@@ -671,6 +743,8 @@ fn App() -> Element {
                             http_body,
                             http_response,
                             logs,
+                            settings_state.clone(),
+                            settings_writer.clone(),
                         ),
                     }
                 }
@@ -934,11 +1008,15 @@ fn render_tokens_tab(
     token_caps_input: Signal<String>,
     token_output: Signal<String>,
     logs: Signal<Vec<LogEntry>>,
+    settings: Signal<AppSettings>,
+    writer: Signal<SettingsWriter>,
 ) -> Element {
     let caps_value = { token_caps_input.read().clone() };
     let token_value = { token_output.read().clone() };
 
     let mut token_caps_binding = token_caps_input.clone();
+    let settings_caps_signal = settings;
+    let writer_caps_signal = writer;
 
     let sign_keypair = keypair.clone();
     let sign_caps = token_caps_input.clone();
@@ -955,7 +1033,13 @@ fn render_tokens_tab(
                     "Capabilities"
                     input {
                         value: caps_value,
-                        oninput: move |evt| token_caps_binding.set(evt.value()),
+                        oninput: move |evt| {
+                            let value = evt.value();
+                            token_caps_binding.set(value.clone());
+                            persist_update(settings_caps_signal, writer_caps_signal, |state| {
+                                state.token_capabilities = value;
+                            });
+                        },
                         placeholder: "Comma-separated scopes"
                     }
                 }
@@ -998,6 +1082,8 @@ fn render_sessions_tab(
     homeserver_input: Signal<String>,
     signup_code_input: Signal<String>,
     logs: Signal<Vec<LogEntry>>,
+    settings: Signal<AppSettings>,
+    writer: Signal<SettingsWriter>,
 ) -> Element {
     let homeserver_value = { homeserver_input.read().clone() };
     let signup_value = { signup_code_input.read().clone() };
@@ -1005,6 +1091,10 @@ fn render_sessions_tab(
 
     let mut homeserver_binding = homeserver_input.clone();
     let mut signup_binding = signup_code_input.clone();
+    let settings_homeserver_signal = settings.clone();
+    let writer_homeserver_signal = writer.clone();
+    let settings_signup_signal = settings;
+    let writer_signup_signal = writer;
 
     let signup_network = network_mode.clone();
     let signup_keypair = keypair.clone();
@@ -1035,11 +1125,29 @@ fn render_sessions_tab(
             div { class: "form-grid",
                 label {
                     "Homeserver public key"
-                    input { value: homeserver_value, oninput: move |evt| homeserver_binding.set(evt.value()) }
+                    input {
+                        value: homeserver_value,
+                        oninput: move |evt| {
+                            let value = evt.value();
+                            homeserver_binding.set(value.clone());
+                            persist_update(settings_homeserver_signal, writer_homeserver_signal, |state| {
+                                state.homeserver = value;
+                            });
+                        }
+                    }
                 }
                 label {
                     "Signup code (optional)"
-                    input { value: signup_value, oninput: move |evt| signup_binding.set(evt.value()) }
+                    input {
+                        value: signup_value,
+                        oninput: move |evt| {
+                            let value = evt.value();
+                            signup_binding.set(value.clone());
+                            persist_update(settings_signup_signal, writer_signup_signal, |state| {
+                                state.signup_code = value;
+                            });
+                        }
+                    }
                 }
             }
             div { class: "small-buttons",
@@ -1186,6 +1294,8 @@ fn render_auth_tab(
     auth_flow: Signal<Option<PubkyAuthFlow>>,
     auth_request_input: Signal<String>,
     logs: Signal<Vec<LogEntry>>,
+    settings: Signal<AppSettings>,
+    writer: Signal<SettingsWriter>,
 ) -> Element {
     let caps_value = { auth_caps_input.read().clone() };
     let relay_value = { auth_relay_input.read().clone() };
@@ -1197,6 +1307,12 @@ fn render_auth_tab(
     let mut caps_binding = auth_caps_input.clone();
     let mut relay_binding = auth_relay_input.clone();
     let mut request_binding = auth_request_input.clone();
+    let settings_caps_signal = settings.clone();
+    let writer_caps_signal = writer.clone();
+    let settings_relay_signal = settings.clone();
+    let writer_relay_signal = writer.clone();
+    let settings_request_signal = settings;
+    let writer_request_signal = writer;
 
     let start_network = network_mode.clone();
     let start_caps_signal = auth_caps_input.clone();
@@ -1236,7 +1352,13 @@ fn render_auth_tab(
                     "Requested capabilities"
                     input {
                         value: caps_value,
-                        oninput: move |evt| caps_binding.set(evt.value()),
+                        oninput: move |evt| {
+                            let value = evt.value();
+                            caps_binding.set(value.clone());
+                            persist_update(settings_caps_signal, writer_caps_signal, |state| {
+                                state.auth_capabilities = value;
+                            });
+                        },
                         placeholder: "Example: /pub/app/:rw"
                     }
                 }
@@ -1244,7 +1366,13 @@ fn render_auth_tab(
                     "Relay override (optional)"
                     input {
                         value: relay_value,
-                        oninput: move |evt| relay_binding.set(evt.value()),
+                        oninput: move |evt| {
+                            let value = evt.value();
+                            relay_binding.set(value.clone());
+                            persist_update(settings_relay_signal, writer_relay_signal, |state| {
+                                state.auth_relay = value;
+                            });
+                        },
                         placeholder: "https://your-relay.example/link/"
                     }
                 }
@@ -1387,7 +1515,13 @@ fn render_auth_tab(
                     textarea {
                         class: "tall",
                         value: request_value,
-                        oninput: move |evt| request_binding.set(evt.value()),
+                        oninput: move |evt| {
+                            let value = evt.value();
+                            request_binding.set(value.clone());
+                            persist_update(settings_request_signal, writer_request_signal, |state| {
+                                state.auth_request = value;
+                            });
+                        },
                         placeholder: "pubkyauth:///?caps=..."
                     }
                 }
@@ -1443,6 +1577,8 @@ fn render_storage_tab(
     public_resource: Signal<String>,
     public_response: Signal<String>,
     logs: Signal<Vec<LogEntry>>,
+    settings: Signal<AppSettings>,
+    writer: Signal<SettingsWriter>,
 ) -> Element {
     let path_value = { storage_path.read().clone() };
     let body_value = { storage_body.read().clone() };
@@ -1452,6 +1588,10 @@ fn render_storage_tab(
 
     let mut storage_path_binding = storage_path.clone();
     let mut storage_body_binding = storage_body.clone();
+    let settings_storage_path_signal = settings.clone();
+    let writer_storage_path_signal = writer.clone();
+    let settings_storage_body_signal = settings.clone();
+    let writer_storage_body_signal = writer.clone();
 
     let storage_session_get = session.clone();
     let storage_path_get = storage_path.clone();
@@ -1474,6 +1614,8 @@ fn render_storage_tab(
     let public_response_signal = public_response.clone();
     let public_logs = logs.clone();
     let public_network = network_mode.clone();
+    let settings_public_resource_signal = settings;
+    let writer_public_resource_signal = writer;
 
     rsx! {
         div { class: "tab-body",
@@ -1483,11 +1625,38 @@ fn render_storage_tab(
             div { class: "form-grid",
                 label {
                     "Absolute path"
-                    input { value: path_value.clone(), oninput: move |evt| storage_path_binding.set(evt.value()) }
+                    input {
+                        value: path_value.clone(),
+                        oninput: move |evt| {
+                            let value = evt.value();
+                            storage_path_binding.set(value.clone());
+                            persist_update(
+                                settings_storage_path_signal,
+                                writer_storage_path_signal,
+                                |state| {
+                                    state.storage_path = value;
+                                },
+                            );
+                        }
+                    }
                 }
                 label {
                     "Body"
-                    textarea { class: "tall", value: body_value.clone(), oninput: move |evt| storage_body_binding.set(evt.value()) }
+                    textarea {
+                        class: "tall",
+                        value: body_value.clone(),
+                        oninput: move |evt| {
+                            let value = evt.value();
+                            storage_body_binding.set(value.clone());
+                            persist_update(
+                                settings_storage_body_signal,
+                                writer_storage_body_signal,
+                                |state| {
+                                    state.storage_body = value;
+                                },
+                            );
+                        }
+                    }
                 }
             }
             div { class: "small-buttons",
@@ -1584,7 +1753,20 @@ fn render_storage_tab(
             div { class: "form-grid",
                 label {
                     "Resource"
-                    input { value: public_value.clone(), oninput: move |evt| public_resource_binding.set(evt.value()) }
+                    input {
+                        value: public_value.clone(),
+                        oninput: move |evt| {
+                            let value = evt.value();
+                            public_resource_binding.set(value.clone());
+                            persist_update(
+                                settings_public_resource_signal,
+                                writer_public_resource_signal,
+                                |state| {
+                                    state.public_resource = value;
+                                },
+                            );
+                        }
+                    }
                 }
             }
             div { class: "small-buttons",
@@ -1630,6 +1812,8 @@ fn render_http_tab(
     http_body: Signal<String>,
     http_response: Signal<String>,
     logs: Signal<Vec<LogEntry>>,
+    settings: Signal<AppSettings>,
+    writer: Signal<SettingsWriter>,
 ) -> Element {
     let method_value = { http_method.read().clone() };
     let url_value = { http_url.read().clone() };
@@ -1641,6 +1825,14 @@ fn render_http_tab(
     let mut url_binding = http_url.clone();
     let mut headers_binding = http_headers.clone();
     let mut body_binding = http_body.clone();
+    let settings_method_signal = settings.clone();
+    let writer_method_signal = writer.clone();
+    let settings_url_signal = settings.clone();
+    let writer_url_signal = writer.clone();
+    let settings_headers_signal = settings.clone();
+    let writer_headers_signal = writer.clone();
+    let settings_body_signal = settings;
+    let writer_body_signal = writer;
 
     let request_method_signal = http_method.clone();
     let request_url_signal = http_url.clone();
@@ -1659,7 +1851,13 @@ fn render_http_tab(
                         "Method"
                         select {
                             value: method_value.clone(),
-                            oninput: move |evt| method_binding.set(evt.value()),
+                            oninput: move |evt| {
+                                let value = evt.value();
+                                method_binding.set(value.clone());
+                                persist_update(settings_method_signal, writer_method_signal, |state| {
+                                    state.http_method = value;
+                                });
+                            },
                             for option in ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"] {
                                 option { value: option, selected: method_value == option, "{option}" }
                             }
@@ -1669,7 +1867,13 @@ fn render_http_tab(
                         "URL"
                         input {
                             value: url_value.clone(),
-                            oninput: move |evt| url_binding.set(evt.value()),
+                            oninput: move |evt| {
+                                let value = evt.value();
+                                url_binding.set(value.clone());
+                                persist_update(settings_url_signal, writer_url_signal, |state| {
+                                    state.http_url = value;
+                                });
+                            },
                             placeholder: "https:// or pubky://",
                         }
                     }
@@ -1680,7 +1884,13 @@ fn render_http_tab(
                         textarea {
                             class: "tall",
                             value: headers_value.clone(),
-                            oninput: move |evt| headers_binding.set(evt.value()),
+                            oninput: move |evt| {
+                                let value = evt.value();
+                                headers_binding.set(value.clone());
+                                persist_update(settings_headers_signal, writer_headers_signal, |state| {
+                                    state.http_headers = value;
+                                });
+                            },
                             placeholder: "Header-Name: value",
                         }
                     }
@@ -1689,7 +1899,13 @@ fn render_http_tab(
                         textarea {
                             class: "tall",
                             value: body_value.clone(),
-                            oninput: move |evt| body_binding.set(evt.value()),
+                            oninput: move |evt| {
+                                let value = evt.value();
+                                body_binding.set(value.clone());
+                                persist_update(settings_body_signal, writer_body_signal, |state| {
+                                    state.http_body = value;
+                                });
+                            },
                             placeholder: "Request body (optional)",
                         }
                     }

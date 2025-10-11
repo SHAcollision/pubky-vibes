@@ -47,3 +47,7 @@ Configuration lives in `config.toml` within the chosen directory. The homeserver
 - The UI state is built with reactive signals so long-running async tasks (like spinning up the homeserver) don’t block the interface.
 
 This is intentionally small so teams can iterate quickly during hackathons: reuse the UI skeleton, drop in your Pubky extensions, and you have a production-friendly launcher.
+
+## Cross-platform builds
+
+Follow the [cross-building guide](../docs/cross-building.md) for end-to-end instructions on producing Linux, Windows, and macOS binaries from an Ubuntu host (the same process the CI pipeline runs).

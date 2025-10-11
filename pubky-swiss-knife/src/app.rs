@@ -59,11 +59,11 @@ impl Tab {
     }
 }
 
-#[allow(non_snake_case)]
+#[allow(non_snake_case, clippy::clone_on_copy)]
 pub fn App() -> Element {
     let active_tab = use_signal(|| Tab::Keys);
     let network_mode = use_signal(|| NetworkMode::Mainnet);
-    let logs = use_signal(|| Vec::<LogEntry>::new());
+    let logs = use_signal(Vec::<LogEntry>::new);
     let show_logs = use_signal(|| false);
 
     let pubky_facade = use_signal(|| PubkyFacadeState::loading(NetworkMode::Mainnet));
@@ -291,7 +291,6 @@ fn queue_pubky_build(
 
     let mut setter = pubky_state;
     spawn({
-        let network_signal = network_signal;
         async move {
             match crate::utils::pubky::build_pubky_facade(target).await {
                 Ok(pubky) => {

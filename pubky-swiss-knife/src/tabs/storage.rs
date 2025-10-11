@@ -5,6 +5,7 @@ use crate::utils::http::format_response;
 use crate::utils::logging::{LogEntry, LogLevel, push_log};
 use crate::utils::pubky::PubkyFacadeState;
 
+#[allow(clippy::too_many_arguments, clippy::clone_on_copy)]
 pub fn render_storage_tab(
     pubky_state: Signal<PubkyFacadeState>,
     session: Signal<Option<PubkySession>>,

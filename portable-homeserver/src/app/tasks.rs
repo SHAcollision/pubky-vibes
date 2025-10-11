@@ -38,8 +38,8 @@ pub(crate) fn spawn_start_task<S1, S2>(
 {
     *status_signal.write() = ServerStatus::Starting;
 
-    let mut status_for_task = status_signal.clone();
-    let mut suite_for_task = suite_signal.clone();
+    let mut status_for_task = status_signal;
+    let mut suite_for_task = suite_signal;
 
     spawn(async move {
         let result: anyhow::Result<(RunningServer, ServerInfo)> = async {

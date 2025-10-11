@@ -12,11 +12,14 @@ use pubky::{
     PublicKey,
 };
 use qrcode::{QrCode, render::svg};
-use reqwest::header::HeaderName;
 use rfd::FileDialog;
 use std::fs;
 use std::path::{Path, PathBuf};
 use url::Url;
+
+mod utils;
+
+use utils::requests::{RequestMessages, RequestOutcome, parse_headers, run_request};
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -116,13 +119,13 @@ impl Tab {
 }
 
 #[derive(Clone, Copy)]
-enum LogLevel {
+pub(crate) enum LogLevel {
     Info,
     Success,
     Error,
 }
 
-struct LogEntry {
+pub(crate) struct LogEntry {
     level: LogLevel,
     message: String,
 }
@@ -1498,20 +1501,21 @@ fn render_storage_tab(
                                 push_log(storage_logs_get.clone(), LogLevel::Error, "Provide a path to GET");
                                 return;
                             }
-                            let mut response_signal = storage_response_get.clone();
-                            let logs_task = storage_logs_get.clone();
-                            spawn(async move {
-                                let result = async move {
+                            let response_signal = storage_response_get.clone();
+                            let logs_signal = storage_logs_get.clone();
+                            run_request(
+                                logs_signal,
+                                response_signal,
+                                async move {
                                     let resp = session.storage().get(path.clone()).await?;
                                     let formatted = format_response(resp).await?;
-                                    response_signal.set(formatted.clone());
-                                    Ok::<_, anyhow::Error>(format!("Fetched {path}"))
-                                };
-                                match result.await {
-                                    Ok(msg) => push_log(logs_task, LogLevel::Success, msg),
-                                    Err(err) => push_log(logs_task, LogLevel::Error, format!("GET failed: {err}")),
-                                }
-                            });
+                                    Ok(RequestOutcome::with_response(
+                                        formatted,
+                                        format!("Fetched {path}"),
+                                    ))
+                                },
+                                RequestMessages::new("", "GET failed"),
+                            );
                         } else {
                             push_log(storage_logs_get, LogLevel::Error, "No active session");
                         }
@@ -1526,20 +1530,21 @@ fn render_storage_tab(
                                 return;
                             }
                             let body = storage_body_put.read().clone();
-                            let mut response_signal = storage_response_put.clone();
-                            let logs_task = storage_logs_put.clone();
-                            spawn(async move {
-                                let result = async move {
+                            let response_signal = storage_response_put.clone();
+                            let logs_signal = storage_logs_put.clone();
+                            run_request(
+                                logs_signal,
+                                response_signal,
+                                async move {
                                     let resp = session.storage().put(path.clone(), body.clone()).await?;
                                     let formatted = format_response(resp).await?;
-                                    response_signal.set(formatted.clone());
-                                    Ok::<_, anyhow::Error>(format!("Stored {path}"))
-                                };
-                                match result.await {
-                                    Ok(msg) => push_log(logs_task, LogLevel::Success, msg),
-                                    Err(err) => push_log(logs_task, LogLevel::Error, format!("PUT failed: {err}")),
-                                }
-                            });
+                                    Ok(RequestOutcome::with_response(
+                                        formatted,
+                                        format!("Stored {path}"),
+                                    ))
+                                },
+                                RequestMessages::new("", "PUT failed"),
+                            );
                         } else {
                             push_log(storage_logs_put, LogLevel::Error, "No active session");
                         }
@@ -1553,20 +1558,21 @@ fn render_storage_tab(
                                 push_log(storage_logs_delete.clone(), LogLevel::Error, "Provide a path to DELETE");
                                 return;
                             }
-                            let mut response_signal = storage_response_delete.clone();
-                            let logs_task = storage_logs_delete.clone();
-                            spawn(async move {
-                                let result = async move {
+                            let response_signal = storage_response_delete.clone();
+                            let logs_signal = storage_logs_delete.clone();
+                            run_request(
+                                logs_signal,
+                                response_signal,
+                                async move {
                                     let resp = session.storage().delete(path.clone()).await?;
                                     let formatted = format_response(resp).await?;
-                                    response_signal.set(formatted.clone());
-                                    Ok::<_, anyhow::Error>(format!("Deleted {path}"))
-                                };
-                                match result.await {
-                                    Ok(msg) => push_log(logs_task, LogLevel::Success, msg),
-                                    Err(err) => push_log(logs_task, LogLevel::Error, format!("DELETE failed: {err}")),
-                                }
-                            });
+                                    Ok(RequestOutcome::with_response(
+                                        formatted,
+                                        format!("Deleted {path}"),
+                                    ))
+                                },
+                                RequestMessages::new("", "DELETE failed"),
+                            );
                         } else {
                             push_log(storage_logs_delete, LogLevel::Error, "No active session");
                         }
@@ -1704,11 +1710,13 @@ fn render_http_tab(
                             }
                             let headers = request_headers_signal.read().clone();
                             let body = request_body_signal.read().clone();
-                            let mut response_signal = request_response_signal.clone();
-                            let logs_task = request_logs.clone();
+                            let response_signal = request_response_signal.clone();
+                            let logs_signal = request_logs.clone();
                             let network = *request_network.read();
-                            spawn(async move {
-                                let result = async move {
+                            run_request(
+                                logs_signal,
+                                response_signal,
+                                async move {
                                     let method_parsed = Method::from_bytes(method.as_bytes())
                                         .map_err(|e| anyhow!("Invalid HTTP method: {e}"))?;
                                     let parsed_url = Url::parse(&url)?;
@@ -1718,29 +1726,21 @@ fn render_http_tab(
                                         NetworkMode::Testnet => PubkyHttpClient::testnet()?,
                                     };
                                     let mut request = client.request(method_parsed.clone(), parsed_url);
-                                    for line in headers.lines() {
-                                        if line.trim().is_empty() {
-                                            continue;
-                                        }
-                                        let (name, value) = line
-                                            .split_once(':')
-                                            .ok_or_else(|| anyhow!("Header must use Name: Value format"))?;
-                                        let header_name: HeaderName = name.trim().parse()?;
-                                        request = request.header(header_name, value.trim());
+                                    for (name, value) in parse_headers(&headers)? {
+                                        request = request.header(name, value);
                                     }
                                     if !body.is_empty() {
                                         request = request.body(body.clone());
                                     }
                                     let response = request.send().await?;
                                     let formatted = format_response(response).await?;
-                                    response_signal.set(formatted.clone());
-                                    Ok::<_, anyhow::Error>(format!("{method_parsed} {url_display}"))
-                                };
-                                match result.await {
-                                    Ok(msg) => push_log(logs_task, LogLevel::Success, format!("Request completed: {msg}")),
-                                    Err(err) => push_log(logs_task, LogLevel::Error, format!("Request failed: {err}")),
-                                }
-                            });
+                                    Ok(RequestOutcome::with_response(
+                                        formatted,
+                                        format!("{method_parsed} {url_display}"),
+                                    ))
+                                },
+                                RequestMessages::new("Request completed: ", "Request failed"),
+                            );
                         },
                         "Send"
                     }
@@ -1753,7 +1753,11 @@ fn render_http_tab(
     }
 }
 
-fn push_log(mut logs: Signal<Vec<LogEntry>>, level: LogLevel, message: impl Into<String>) {
+pub(crate) fn push_log(
+    mut logs: Signal<Vec<LogEntry>>,
+    level: LogLevel,
+    message: impl Into<String>,
+) {
     let mut entries = logs.write();
     entries.push(LogEntry {
         level,

@@ -6,6 +6,7 @@ use crate::tabs::format_session_info;
 use crate::utils::logging::{LogEntry, LogLevel, push_log};
 use crate::utils::pubky::PubkyFacadeState;
 
+#[allow(clippy::clone_on_copy)]
 pub fn render_sessions_tab(
     pubky_state: Signal<PubkyFacadeState>,
     keypair: Signal<Option<Keypair>>,

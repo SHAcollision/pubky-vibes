@@ -22,11 +22,14 @@ The tool targets power users who need the flexibility of the CLI while offering 
 ```bash
 # Build the desktop app (requires a system `glib2` runtime for WebKit/GTK)
 cargo run --release
+ 
+# Run the unit test suite (compiles the desktop target, so the same system deps apply)
+cargo test
 ```
 
 The GTK/WebKit stack used by `dioxus-desktop` needs platform packages:
 
-- **Linux:** `libwebkit2gtk-4.1-dev`, `libgtk-3-dev`, `libglib2.0-dev` (package names vary per distro).
+- **Linux:** `libwebkit2gtk-4.1-dev`, `libgtk-3-dev`, `libglib2.0-dev`, `libayatana-appindicator3-dev`, `libxdo-dev` (package names vary per distro).
 - **macOS:** the system SDK already ships the required frameworks.
 - **Windows:** install the [WebKitGTK runtime](https://webkitgtk.org/) or use the official Dioxus bundle instructions.
 

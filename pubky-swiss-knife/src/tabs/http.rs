@@ -24,18 +24,18 @@ pub fn render_http_tab(
     let body_value = { http_body.read().clone() };
     let response_value = { http_response.read().clone() };
 
-    let mut method_binding = http_method.clone();
-    let mut url_binding = http_url.clone();
-    let mut headers_binding = http_headers.clone();
-    let mut body_binding = http_body.clone();
+    let mut method_binding = http_method;
+    let mut url_binding = http_url;
+    let mut headers_binding = http_headers;
+    let mut body_binding = http_body;
 
-    let request_method_signal = http_method.clone();
-    let request_url_signal = http_url.clone();
-    let request_headers_signal = http_headers.clone();
-    let request_body_signal = http_body.clone();
-    let request_response_signal = http_response.clone();
-    let request_logs = logs.clone();
-    let request_network = network_mode.clone();
+    let request_method_signal = http_method;
+    let request_url_signal = http_url;
+    let request_headers_signal = http_headers;
+    let request_body_signal = http_body;
+    let request_response_signal = http_response;
+    let request_logs = logs;
+    let request_network = network_mode;
 
     rsx! {
         div { class: "tab-body single-column",
@@ -85,14 +85,14 @@ pub fn render_http_tab(
                     button { class: "action", onclick: move |_| {
                             let method = request_method_signal.read().clone();
                             let url = request_url_signal.read().clone();
-                            if url.trim().is_empty() {
-                                push_log(request_logs.clone(), LogLevel::Error, "Provide a URL");
-                                return;
-                            }
+                        if url.trim().is_empty() {
+                            push_log(request_logs, LogLevel::Error, "Provide a URL");
+                            return;
+                        }
                             let headers = request_headers_signal.read().clone();
                             let body = request_body_signal.read().clone();
-                            let mut response_signal = request_response_signal.clone();
-                            let logs_task = request_logs.clone();
+                        let mut response_signal = request_response_signal;
+                        let logs_task = request_logs;
                             let network = *request_network.read();
                             spawn(async move {
                                 let result = async move {

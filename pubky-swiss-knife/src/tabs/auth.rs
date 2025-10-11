@@ -8,6 +8,7 @@ use crate::utils::logging::{LogEntry, LogLevel, push_log};
 use crate::utils::pubky::PubkyFacadeState;
 use crate::utils::qr::generate_qr_data_url;
 
+#[allow(clippy::too_many_arguments, clippy::clone_on_copy)]
 pub fn render_auth_tab(
     pubky_state: Signal<PubkyFacadeState>,
     keypair: Signal<Option<Keypair>>,

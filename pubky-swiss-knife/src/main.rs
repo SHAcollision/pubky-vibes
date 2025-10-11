@@ -545,7 +545,7 @@ button.secondary {
 fn App() -> Element {
     let active_tab = use_signal(|| Tab::Keys);
     let network_mode = use_signal(|| NetworkMode::Mainnet);
-    let logs = use_signal(|| Vec::<LogEntry>::new());
+    let logs = use_signal(Vec::<LogEntry>::new);
     let show_logs = use_signal(|| false);
 
     let keypair = use_signal(|| Option::<Keypair>::None);
@@ -589,7 +589,7 @@ fn App() -> Element {
         "Show activity"
     };
     let has_logs = !logs.read().is_empty();
-    let mut toggle_logs_signal = show_logs.clone();
+    let mut toggle_logs_signal = show_logs;
 
     rsx! {
         style { {STYLES} }
@@ -609,7 +609,7 @@ fn App() -> Element {
                 div { class: "header-controls",
                     div { class: "network-toggle",
                         for mode in NetworkMode::ALL {
-                            NetworkToggleOption { network_mode: network_mode.clone(), mode }
+                            NetworkToggleOption { network_mode, mode }
                         }
                     }
                 }
@@ -617,7 +617,7 @@ fn App() -> Element {
             main {
                 nav { class: "tabs",
                     for tab in Tab::ALL {
-                        TabButton { tab, active_tab: active_tab.clone() }
+                        TabButton { tab, active_tab }
                     }
                 }
                 div { class: "panel",
@@ -729,32 +729,32 @@ fn render_keys_tab(
         recovery_path_value.clone()
     };
 
-    let mut generate_secret_input = secret_input.clone();
-    let mut generate_keypair = keypair.clone();
-    let generate_logs = logs.clone();
+    let mut generate_secret_input = secret_input;
+    let mut generate_keypair = keypair;
+    let generate_logs = logs;
 
-    let mut export_secret_input = secret_input.clone();
-    let export_keypair = keypair.clone();
-    let export_logs = logs.clone();
+    let mut export_secret_input = secret_input;
+    let export_keypair = keypair;
+    let export_logs = logs;
 
-    let mut import_keypair_signal = keypair.clone();
-    let import_secret_signal = secret_input.clone();
-    let import_logs = logs.clone();
+    let mut import_keypair_signal = keypair;
+    let import_secret_signal = secret_input;
+    let import_logs = logs;
 
-    let load_path_signal = recovery_path.clone();
-    let load_pass_signal = recovery_passphrase.clone();
-    let load_keypair_signal = keypair.clone();
-    let load_secret_signal = secret_input.clone();
-    let load_logs = logs.clone();
+    let load_path_signal = recovery_path;
+    let load_pass_signal = recovery_passphrase;
+    let load_keypair_signal = keypair;
+    let load_secret_signal = secret_input;
+    let load_logs = logs;
 
-    let save_path_signal = recovery_path.clone();
-    let save_pass_signal = recovery_passphrase.clone();
-    let save_keypair_signal = keypair.clone();
-    let save_logs = logs.clone();
+    let save_path_signal = recovery_path;
+    let save_pass_signal = recovery_passphrase;
+    let save_keypair_signal = keypair;
+    let save_logs = logs;
 
-    let mut secret_input_binding = secret_input.clone();
-    let mut recovery_pass_binding = recovery_passphrase.clone();
-    let mut choose_recovery_path_signal = recovery_path.clone();
+    let mut secret_input_binding = secret_input;
+    let mut recovery_pass_binding = recovery_passphrase;
+    let mut choose_recovery_path_signal = recovery_path;
 
     rsx! {
         div { class: "tab-body tight",
@@ -798,7 +798,7 @@ fn render_keys_tab(
                             match decode_secret_key(&secret) {
                                 Ok(kp) => {
                                     import_keypair_signal.set(Some(kp.clone()));
-                                    push_log(import_logs.clone(), LogLevel::Success, format!("Loaded key for {}", kp.public_key()));
+                                    push_log(import_logs, LogLevel::Success, format!("Loaded key for {}", kp.public_key()));
                                 }
                                 Err(err) => push_log(import_logs, LogLevel::Error, format!("Invalid secret key: {err}")),
                             }
@@ -834,7 +834,7 @@ fn render_keys_tab(
                     button { class: "action", onclick: move |_| {
                             let raw_path = load_path_signal.read().clone();
                             let passphrase = load_pass_signal.read().clone();
-                            let mut immediate_path_signal = load_path_signal.clone();
+                            let mut immediate_path_signal = load_path_signal;
                             let chosen_path = if raw_path.trim().is_empty() {
                                 FileDialog::new().pick_file().map(|path| {
                                     let display = path.display().to_string();
@@ -845,10 +845,10 @@ fn render_keys_tab(
                                 Some(raw_path.clone())
                             };
                             if let Some(selected_path) = chosen_path {
-                                let mut keypair_signal = load_keypair_signal.clone();
-                                let mut secret_signal = load_secret_signal.clone();
-                                let mut path_signal = load_path_signal.clone();
-                                let logs_task = load_logs.clone();
+                                let mut keypair_signal = load_keypair_signal;
+                                let mut secret_signal = load_secret_signal;
+                                let mut path_signal = load_path_signal;
+                                let logs_task = load_logs;
                                 let passphrase_for_task = passphrase.clone();
                                 spawn(async move {
                                     let outcome = (|| -> Result<(Keypair, PathBuf)> {
@@ -885,7 +885,7 @@ fn render_keys_tab(
                     button { class: "action secondary", onclick: move |_| {
                             if let Some(kp) = save_keypair_signal.read().as_ref().cloned() {
                                 let raw_path = save_path_signal.read().clone();
-                                let mut immediate_path_signal = save_path_signal.clone();
+                                let mut immediate_path_signal = save_path_signal;
                                 let chosen_path = if raw_path.trim().is_empty() {
                                     FileDialog::new().save_file().map(|path| {
                                         let display = path.display().to_string();
@@ -897,8 +897,8 @@ fn render_keys_tab(
                                 };
                                 if let Some(selected_path) = chosen_path {
                                     let passphrase = save_pass_signal.read().clone();
-                                    let mut path_signal = save_path_signal.clone();
-                                    let logs_task = save_logs.clone();
+                                    let mut path_signal = save_path_signal;
+                                    let logs_task = save_logs;
                                     spawn(async move {
                                         match save_keypair_to_recovery_file(&kp, &selected_path, &passphrase) {
                                             Ok(path) => {
@@ -918,7 +918,7 @@ fn render_keys_tab(
                                     });
                                 }
                             } else {
-                                push_log(save_logs.clone(), LogLevel::Error, "Generate or import a key first");
+                                push_log(save_logs, LogLevel::Error, "Generate or import a key first");
                             }
                         },
                         "Save recovery file"
@@ -938,12 +938,12 @@ fn render_tokens_tab(
     let caps_value = { token_caps_input.read().clone() };
     let token_value = { token_output.read().clone() };
 
-    let mut token_caps_binding = token_caps_input.clone();
+    let mut token_caps_binding = token_caps_input;
 
-    let sign_keypair = keypair.clone();
-    let sign_caps = token_caps_input.clone();
-    let mut sign_token = token_output.clone();
-    let sign_logs = logs.clone();
+    let sign_keypair = keypair;
+    let sign_caps = token_caps_input;
+    let mut sign_token = token_output;
+    let sign_logs = logs;
 
     rsx! {
         div { class: "tab-body single-column",
@@ -968,7 +968,7 @@ fn render_tokens_tab(
                                 Ok(capabilities) => {
                                     let token = AuthToken::sign(kp, capabilities.clone());
                                     sign_token.set(STANDARD.encode(token.serialize()));
-                                    push_log(sign_logs.clone(), LogLevel::Success, format!(
+                                    push_log(sign_logs, LogLevel::Success, format!(
                                         "Signed token for {} with caps {capabilities}",
                                         kp.public_key()
                                     ));
@@ -1003,30 +1003,30 @@ fn render_sessions_tab(
     let signup_value = { signup_code_input.read().clone() };
     let details_value = { session_details.read().clone() };
 
-    let mut homeserver_binding = homeserver_input.clone();
-    let mut signup_binding = signup_code_input.clone();
+    let mut homeserver_binding = homeserver_input;
+    let mut signup_binding = signup_code_input;
 
-    let signup_network = network_mode.clone();
-    let signup_keypair = keypair.clone();
-    let signup_homeserver = homeserver_input.clone();
-    let signup_code_signal = signup_code_input.clone();
-    let signup_session_signal = session.clone();
-    let signup_details_signal = session_details.clone();
-    let signup_logs = logs.clone();
+    let signup_network = network_mode;
+    let signup_keypair = keypair;
+    let signup_homeserver = homeserver_input;
+    let signup_code_signal = signup_code_input;
+    let signup_session_signal = session;
+    let signup_details_signal = session_details;
+    let signup_logs = logs;
 
-    let signin_network = network_mode.clone();
-    let signin_keypair = keypair.clone();
-    let signin_session_signal = session.clone();
-    let signin_details_signal = session_details.clone();
-    let signin_logs = logs.clone();
+    let signin_network = network_mode;
+    let signin_keypair = keypair;
+    let signin_session_signal = session;
+    let signin_details_signal = session_details;
+    let signin_logs = logs;
 
-    let revalidate_session_signal = session.clone();
-    let revalidate_details_signal = session_details.clone();
-    let revalidate_logs = logs.clone();
+    let revalidate_session_signal = session;
+    let revalidate_details_signal = session_details;
+    let revalidate_logs = logs;
 
-    let signout_session_signal = session.clone();
-    let signout_details_signal = session_details.clone();
-    let signout_logs = logs.clone();
+    let signout_session_signal = session;
+    let signout_details_signal = session_details;
+    let signout_logs = logs;
 
     rsx! {
         div { class: "tab-body single-column",
@@ -1047,14 +1047,14 @@ fn render_sessions_tab(
                         if let Some(kp) = signup_keypair.read().as_ref().cloned() {
                             let homeserver = signup_homeserver.read().clone();
                             if homeserver.trim().is_empty() {
-                                push_log(signup_logs.clone(), LogLevel::Error, "Homeserver public key is required");
+                                push_log(signup_logs, LogLevel::Error, "Homeserver public key is required");
                                 return;
                             }
                             let signup_code = signup_code_signal.read().clone();
                             let network = *signup_network.read();
-                            let mut session_signal = signup_session_signal.clone();
-                            let mut details_signal = signup_details_signal.clone();
-                            let logs_task = signup_logs.clone();
+                            let mut session_signal = signup_session_signal;
+                            let mut details_signal = signup_details_signal;
+                            let logs_task = signup_logs;
                             spawn(async move {
                                 let result = async move {
                                     let homeserver_pk = PublicKey::try_from(homeserver.as_str())
@@ -1082,9 +1082,9 @@ fn render_sessions_tab(
                 button { class: "action secondary", onclick: move |_| {
                         if let Some(kp) = signin_keypair.read().as_ref().cloned() {
                             let network = *signin_network.read();
-                            let logs_task = signin_logs.clone();
-                            let mut session_signal = signin_session_signal.clone();
-                            let mut details_signal = signin_details_signal.clone();
+                            let logs_task = signin_logs;
+                            let mut session_signal = signin_session_signal;
+                            let mut details_signal = signin_details_signal;
                             spawn(async move {
                                 let result = async move {
                                     let pubky = build_pubky(network)?;
@@ -1114,9 +1114,9 @@ fn render_sessions_tab(
                 }
                 button { class: "action secondary", onclick: move |_| {
                         if let Some(session) = revalidate_session_signal.read().as_ref().cloned() {
-                            let mut session_signal = revalidate_session_signal.clone();
-                            let mut details_signal = revalidate_details_signal.clone();
-                            let logs_task = revalidate_logs.clone();
+                            let mut session_signal = revalidate_session_signal;
+                            let mut details_signal = revalidate_details_signal;
+                            let logs_task = revalidate_logs;
                             spawn(async move {
                                 match session.revalidate().await {
                                     Ok(Some(info)) => {
@@ -1138,14 +1138,14 @@ fn render_sessions_tab(
                     "Revalidate"
                 }
                 button { class: "action secondary", onclick: move |_| {
-                        let mut session_signal = signout_session_signal.clone();
+                        let mut session_signal = signout_session_signal;
                         let maybe_session = {
                             let mut guard = session_signal.write();
                             guard.take()
                         };
                         if let Some(session) = maybe_session {
-                            let mut details_signal = signout_details_signal.clone();
-                            let logs_task = signout_logs.clone();
+                            let mut details_signal = signout_details_signal;
+                            let logs_task = signout_logs;
                             spawn(async move {
                                 match session.signout().await {
                                     Ok(()) => {
@@ -1173,6 +1173,7 @@ fn render_sessions_tab(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn render_auth_tab(
     network_mode: Signal<NetworkMode>,
     keypair: Signal<Option<Keypair>>,
@@ -1194,37 +1195,37 @@ fn render_auth_tab(
     let qr_value = { auth_qr_data.read().clone() };
     let request_value = { auth_request_input.read().clone() };
 
-    let mut caps_binding = auth_caps_input.clone();
-    let mut relay_binding = auth_relay_input.clone();
-    let mut request_binding = auth_request_input.clone();
+    let mut caps_binding = auth_caps_input;
+    let mut relay_binding = auth_relay_input;
+    let mut request_binding = auth_request_input;
 
-    let start_network = network_mode.clone();
-    let start_caps_signal = auth_caps_input.clone();
-    let start_relay_signal = auth_relay_input.clone();
-    let start_flow_signal = auth_flow.clone();
-    let start_url_signal = auth_url_output.clone();
-    let start_qr_signal = auth_qr_data.clone();
-    let start_status_signal = auth_status.clone();
-    let start_logs = logs.clone();
+    let start_network = network_mode;
+    let start_caps_signal = auth_caps_input;
+    let start_relay_signal = auth_relay_input;
+    let start_flow_signal = auth_flow;
+    let start_url_signal = auth_url_output;
+    let start_qr_signal = auth_qr_data;
+    let start_status_signal = auth_status;
+    let start_logs = logs;
 
-    let mut await_flow_signal = auth_flow.clone();
-    let mut await_status_signal = auth_status.clone();
-    let await_url_signal = auth_url_output.clone();
-    let await_qr_signal = auth_qr_data.clone();
-    let await_session_signal = session.clone();
-    let await_details_signal = session_details.clone();
-    let await_logs = logs.clone();
+    let mut await_flow_signal = auth_flow;
+    let mut await_status_signal = auth_status;
+    let await_url_signal = auth_url_output;
+    let await_qr_signal = auth_qr_data;
+    let await_session_signal = session;
+    let await_details_signal = session_details;
+    let await_logs = logs;
 
-    let mut cancel_flow_signal = auth_flow.clone();
-    let mut cancel_status_signal = auth_status.clone();
-    let mut cancel_url_signal = auth_url_output.clone();
-    let mut cancel_qr_signal = auth_qr_data.clone();
-    let cancel_logs = logs.clone();
+    let mut cancel_flow_signal = auth_flow;
+    let mut cancel_status_signal = auth_status;
+    let mut cancel_url_signal = auth_url_output;
+    let mut cancel_qr_signal = auth_qr_data;
+    let cancel_logs = logs;
 
-    let approve_network = network_mode.clone();
-    let approve_keypair = keypair.clone();
-    let approve_request_signal = auth_request_input.clone();
-    let approve_logs = logs.clone();
+    let approve_network = network_mode;
+    let approve_keypair = keypair;
+    let approve_request_signal = auth_request_input;
+    let approve_logs = logs;
 
     rsx! {
         div { class: "tab-body",
@@ -1253,16 +1254,16 @@ fn render_auth_tab(
                 button { class: "action", onclick: move |_| {
                         let caps_text = start_caps_signal.read().clone();
                         if caps_text.trim().is_empty() {
-                            push_log(start_logs.clone(), LogLevel::Error, "Provide capabilities for the request");
+                            push_log(start_logs, LogLevel::Error, "Provide capabilities for the request");
                             return;
                         }
                         let relay_text = start_relay_signal.read().clone();
                         let network = *start_network.read();
-                        let mut flow_slot = start_flow_signal.clone();
-                        let mut url_slot = start_url_signal.clone();
-                        let mut qr_slot = start_qr_signal.clone();
-                        let mut status_slot = start_status_signal.clone();
-                        let logs_task = start_logs.clone();
+                        let mut flow_slot = start_flow_signal;
+                        let mut url_slot = start_url_signal;
+                        let mut qr_slot = start_qr_signal;
+                        let mut status_slot = start_status_signal;
+                        let logs_task = start_logs;
                         spawn(async move {
                             let result = async move {
                                 let capabilities = Capabilities::try_from(caps_text.trim())
@@ -1307,12 +1308,12 @@ fn render_auth_tab(
                         };
                         if let Some(flow) = maybe_flow {
                             await_status_signal.set(String::from("Waiting for remote approval..."));
-                            let mut url_slot = await_url_signal.clone();
-                            let mut qr_slot = await_qr_signal.clone();
-                            let mut status_slot = await_status_signal.clone();
-                            let mut session_slot = await_session_signal.clone();
-                            let mut details_slot = await_details_signal.clone();
-                            let logs_task = await_logs.clone();
+                            let mut url_slot = await_url_signal;
+                            let mut qr_slot = await_qr_signal;
+                            let mut status_slot = await_status_signal;
+                            let mut session_slot = await_session_signal;
+                            let mut details_slot = await_details_signal;
+                            let logs_task = await_logs;
                             spawn(async move {
                                 match flow.await_approval().await {
                                     Ok(new_session) => {
@@ -1353,7 +1354,7 @@ fn render_auth_tab(
                         cancel_url_signal.set(String::new());
                         cancel_qr_signal.set(None);
                         if had_flow {
-                            push_log(cancel_logs.clone(), LogLevel::Info, "Auth flow cancelled");
+                            push_log(cancel_logs, LogLevel::Info, "Auth flow cancelled");
                         } else {
                             push_log(cancel_logs, LogLevel::Error, "No auth flow to cancel");
                         }
@@ -1396,13 +1397,13 @@ fn render_auth_tab(
                 button { class: "action", onclick: move |_| {
                         let url = approve_request_signal.read().clone();
                         if url.trim().is_empty() {
-                            push_log(approve_logs.clone(), LogLevel::Error, "Paste a pubkyauth:// URL to approve");
+                            push_log(approve_logs, LogLevel::Error, "Paste a pubkyauth:// URL to approve");
                             return;
                         }
                         if let Some(kp) = approve_keypair.read().as_ref().cloned() {
                             let network = *approve_network.read();
                             let url_string = url.trim().to_string();
-                            let logs_task = approve_logs.clone();
+                            let logs_task = approve_logs;
                             spawn(async move {
                                 let result = async move {
                                     let pubky = build_pubky(network)?;
@@ -1434,6 +1435,7 @@ fn render_auth_tab(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn render_storage_tab(
     network_mode: Signal<NetworkMode>,
     session: Signal<Option<PubkySession>>,
@@ -1450,30 +1452,30 @@ fn render_storage_tab(
     let public_value = { public_resource.read().clone() };
     let public_resp = { public_response.read().clone() };
 
-    let mut storage_path_binding = storage_path.clone();
-    let mut storage_body_binding = storage_body.clone();
+    let mut storage_path_binding = storage_path;
+    let mut storage_body_binding = storage_body;
 
-    let storage_session_get = session.clone();
-    let storage_path_get = storage_path.clone();
-    let storage_response_get = storage_response.clone();
-    let storage_logs_get = logs.clone();
+    let storage_session_get = session;
+    let storage_path_get = storage_path;
+    let storage_response_get = storage_response;
+    let storage_logs_get = logs;
 
-    let storage_session_put = session.clone();
-    let storage_path_put = storage_path.clone();
-    let storage_body_put = storage_body.clone();
-    let storage_response_put = storage_response.clone();
-    let storage_logs_put = logs.clone();
+    let storage_session_put = session;
+    let storage_path_put = storage_path;
+    let storage_body_put = storage_body;
+    let storage_response_put = storage_response;
+    let storage_logs_put = logs;
 
-    let storage_session_delete = session.clone();
-    let storage_path_delete = storage_path.clone();
-    let storage_response_delete = storage_response.clone();
-    let storage_logs_delete = logs.clone();
+    let storage_session_delete = session;
+    let storage_path_delete = storage_path;
+    let storage_response_delete = storage_response;
+    let storage_logs_delete = logs;
 
-    let mut public_resource_binding = public_resource.clone();
-    let public_resource_signal = public_resource.clone();
-    let public_response_signal = public_response.clone();
-    let public_logs = logs.clone();
-    let public_network = network_mode.clone();
+    let mut public_resource_binding = public_resource;
+    let public_resource_signal = public_resource;
+    let public_response_signal = public_response;
+    let public_logs = logs;
+    let public_network = network_mode;
 
     rsx! {
         div { class: "tab-body",
@@ -1495,11 +1497,11 @@ fn render_storage_tab(
                         if let Some(session) = storage_session_get.read().as_ref().cloned() {
                             let path = storage_path_get.read().clone();
                             if path.trim().is_empty() {
-                                push_log(storage_logs_get.clone(), LogLevel::Error, "Provide a path to GET");
+                                push_log(storage_logs_get, LogLevel::Error, "Provide a path to GET");
                                 return;
                             }
-                            let mut response_signal = storage_response_get.clone();
-                            let logs_task = storage_logs_get.clone();
+                            let mut response_signal = storage_response_get;
+                            let logs_task = storage_logs_get;
                             spawn(async move {
                                 let result = async move {
                                     let resp = session.storage().get(path.clone()).await?;
@@ -1522,12 +1524,12 @@ fn render_storage_tab(
                         if let Some(session) = storage_session_put.read().as_ref().cloned() {
                             let path = storage_path_put.read().clone();
                             if path.trim().is_empty() {
-                                push_log(storage_logs_put.clone(), LogLevel::Error, "Provide a path to PUT");
+                                push_log(storage_logs_put, LogLevel::Error, "Provide a path to PUT");
                                 return;
                             }
                             let body = storage_body_put.read().clone();
-                            let mut response_signal = storage_response_put.clone();
-                            let logs_task = storage_logs_put.clone();
+                            let mut response_signal = storage_response_put;
+                            let logs_task = storage_logs_put;
                             spawn(async move {
                                 let result = async move {
                                     let resp = session.storage().put(path.clone(), body.clone()).await?;
@@ -1550,11 +1552,11 @@ fn render_storage_tab(
                         if let Some(session) = storage_session_delete.read().as_ref().cloned() {
                             let path = storage_path_delete.read().clone();
                             if path.trim().is_empty() {
-                                push_log(storage_logs_delete.clone(), LogLevel::Error, "Provide a path to DELETE");
+                                push_log(storage_logs_delete, LogLevel::Error, "Provide a path to DELETE");
                                 return;
                             }
-                            let mut response_signal = storage_response_delete.clone();
-                            let logs_task = storage_logs_delete.clone();
+                            let mut response_signal = storage_response_delete;
+                            let logs_task = storage_logs_delete;
                             spawn(async move {
                                 let result = async move {
                                     let resp = session.storage().delete(path.clone()).await?;
@@ -1591,11 +1593,11 @@ fn render_storage_tab(
                 button { class: "action", onclick: move |_| {
                         let resource = public_resource_signal.read().clone();
                         if resource.trim().is_empty() {
-                            push_log(public_logs.clone(), LogLevel::Error, "Provide a resource to fetch");
+                            push_log(public_logs, LogLevel::Error, "Provide a resource to fetch");
                             return;
                         }
-                        let mut response_signal = public_response_signal.clone();
-                        let logs_task = public_logs.clone();
+                        let mut response_signal = public_response_signal;
+                        let logs_task = public_logs;
                         let network = *public_network.read();
                         spawn(async move {
                             let result = async move {
@@ -1637,18 +1639,18 @@ fn render_http_tab(
     let body_value = { http_body.read().clone() };
     let response_value = { http_response.read().clone() };
 
-    let mut method_binding = http_method.clone();
-    let mut url_binding = http_url.clone();
-    let mut headers_binding = http_headers.clone();
-    let mut body_binding = http_body.clone();
+    let mut method_binding = http_method;
+    let mut url_binding = http_url;
+    let mut headers_binding = http_headers;
+    let mut body_binding = http_body;
 
-    let request_method_signal = http_method.clone();
-    let request_url_signal = http_url.clone();
-    let request_headers_signal = http_headers.clone();
-    let request_body_signal = http_body.clone();
-    let request_response_signal = http_response.clone();
-    let request_logs = logs.clone();
-    let request_network = network_mode.clone();
+    let request_method_signal = http_method;
+    let request_url_signal = http_url;
+    let request_headers_signal = http_headers;
+    let request_body_signal = http_body;
+    let request_response_signal = http_response;
+    let request_logs = logs;
+    let request_network = network_mode;
 
     rsx! {
         div { class: "tab-body single-column",
@@ -1699,13 +1701,13 @@ fn render_http_tab(
                             let method = request_method_signal.read().clone();
                             let url = request_url_signal.read().clone();
                             if url.trim().is_empty() {
-                                push_log(request_logs.clone(), LogLevel::Error, "Provide a URL");
+                                push_log(request_logs, LogLevel::Error, "Provide a URL");
                                 return;
                             }
                             let headers = request_headers_signal.read().clone();
                             let body = request_body_signal.read().clone();
-                            let mut response_signal = request_response_signal.clone();
-                            let logs_task = request_logs.clone();
+                            let mut response_signal = request_response_signal;
+                            let logs_task = request_logs;
                             let network = *request_network.read();
                             spawn(async move {
                                 let result = async move {
@@ -1788,11 +1790,11 @@ fn save_keypair_to_recovery_file(
     passphrase: &str,
 ) -> Result<PathBuf> {
     let normalized = normalize_pkarr_path(path)?;
-    if let Some(parent) = normalized.parent() {
-        if !parent.as_os_str().is_empty() {
-            fs::create_dir_all(parent)
-                .with_context(|| format!("failed to create directory {}", parent.display()))?;
-        }
+    if let Some(parent) = normalized.parent()
+        && !parent.as_os_str().is_empty()
+    {
+        fs::create_dir_all(parent)
+            .with_context(|| format!("failed to create directory {}", parent.display()))?;
     }
     let bytes = recovery_file::create_recovery_file(keypair, passphrase);
     fs::write(&normalized, bytes)
@@ -1822,7 +1824,7 @@ fn normalize_pkarr_path(input: &str) -> Result<PathBuf> {
     let needs_extension = expanded
         .extension()
         .and_then(|ext| ext.to_str())
-        .map(|ext| ext.to_ascii_lowercase() != "pkarr")
+        .map(|ext| !ext.eq_ignore_ascii_case("pkarr"))
         .unwrap_or(true);
     if needs_extension {
         expanded.set_extension("pkarr");

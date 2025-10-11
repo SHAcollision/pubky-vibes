@@ -339,6 +339,8 @@ main {
 }
 
 .field-error {
+    display: block;
+    margin-top: 0.25rem;
     font-size: 0.8rem;
     color: #fca5a5;
 }
@@ -1473,20 +1475,20 @@ fn render_storage_tab(
     let storage_path_get = storage_path.clone();
     let storage_response_get = storage_response.clone();
     let storage_logs_get = logs.clone();
-    let mut storage_path_error_get = storage_path_error.clone();
+    let storage_path_error_get = storage_path_error.clone();
 
     let storage_session_put = session.clone();
     let storage_path_put = storage_path.clone();
     let storage_body_put = storage_body.clone();
     let storage_response_put = storage_response.clone();
     let storage_logs_put = logs.clone();
-    let mut storage_path_error_put = storage_path_error.clone();
+    let storage_path_error_put = storage_path_error.clone();
 
     let storage_session_delete = session.clone();
     let storage_path_delete = storage_path.clone();
     let storage_response_delete = storage_response.clone();
     let storage_logs_delete = logs.clone();
-    let mut storage_path_error_delete = storage_path_error.clone();
+    let storage_path_error_delete = storage_path_error.clone();
 
     let mut public_resource_binding = public_resource.clone();
     let mut public_resource_error_reset = public_resource_error.clone();
@@ -1494,7 +1496,7 @@ fn render_storage_tab(
     let public_response_signal = public_response.clone();
     let public_logs = logs.clone();
     let public_network = network_mode.clone();
-    let mut public_resource_error_signal = public_resource_error.clone();
+    let public_resource_error_signal = public_resource_error.clone();
 
     rsx! {
         div { class: "tab-body",
@@ -1523,15 +1525,13 @@ fn render_storage_tab(
             div { class: "small-buttons",
                 button { class: "action", onclick: move |_| {
                         if let Some(session) = storage_session_get.read().as_ref().cloned() {
-                            let raw_path = storage_path_get.read().clone();
-                            let trimmed_path = raw_path.trim();
-                            if trimmed_path.is_empty() {
-                                storage_path_error_get
-                                    .set(Some("Enter a path before sending a GET request.".to_string()));
+                            let Some(path) = validate_required_text(
+                                storage_path_get,
+                                storage_path_error_get,
+                                "Enter a path before sending a GET request.",
+                            ) else {
                                 return;
-                            }
-                            storage_path_error_get.set(None);
-                            let path = trimmed_path.to_string();
+                            };
                             let mut response_signal = storage_response_get.clone();
                             let logs_task = storage_logs_get.clone();
                             spawn(async move {
@@ -1554,15 +1554,13 @@ fn render_storage_tab(
                 }
                 button { class: "action secondary", onclick: move |_| {
                         if let Some(session) = storage_session_put.read().as_ref().cloned() {
-                            let raw_path = storage_path_put.read().clone();
-                            let trimmed_path = raw_path.trim();
-                            if trimmed_path.is_empty() {
-                                storage_path_error_put
-                                    .set(Some("Enter a path before sending a PUT request.".to_string()));
+                            let Some(path) = validate_required_text(
+                                storage_path_put,
+                                storage_path_error_put,
+                                "Enter a path before sending a PUT request.",
+                            ) else {
                                 return;
-                            }
-                            storage_path_error_put.set(None);
-                            let path = trimmed_path.to_string();
+                            };
                             let body = storage_body_put.read().clone();
                             let mut response_signal = storage_response_put.clone();
                             let logs_task = storage_logs_put.clone();
@@ -1586,15 +1584,13 @@ fn render_storage_tab(
                 }
                 button { class: "action secondary", onclick: move |_| {
                         if let Some(session) = storage_session_delete.read().as_ref().cloned() {
-                            let raw_path = storage_path_delete.read().clone();
-                            let trimmed_path = raw_path.trim();
-                            if trimmed_path.is_empty() {
-                                storage_path_error_delete
-                                    .set(Some("Enter a path before sending a DELETE request.".to_string()));
+                            let Some(path) = validate_required_text(
+                                storage_path_delete,
+                                storage_path_error_delete,
+                                "Enter a path before sending a DELETE request.",
+                            ) else {
                                 return;
-                            }
-                            storage_path_error_delete.set(None);
-                            let path = trimmed_path.to_string();
+                            };
                             let mut response_signal = storage_response_delete.clone();
                             let logs_task = storage_logs_delete.clone();
                             spawn(async move {
@@ -1640,15 +1636,13 @@ fn render_storage_tab(
             }
             div { class: "small-buttons",
                 button { class: "action", onclick: move |_| {
-                        let resource = public_resource_signal.read().clone();
-                        let trimmed_resource = resource.trim();
-                        if trimmed_resource.is_empty() {
-                            public_resource_error_signal
-                                .set(Some("Enter a resource before fetching.".to_string()));
+                        let Some(resource) = validate_required_text(
+                            public_resource_signal,
+                            public_resource_error_signal,
+                            "Enter a resource before fetching.",
+                        ) else {
                             return;
-                        }
-                        public_resource_error_signal.set(None);
-                        let resource = trimmed_resource.to_string();
+                        };
                         let mut response_signal = public_response_signal.clone();
                         let logs_task = public_logs.clone();
                         let network = *public_network.read();
@@ -1701,13 +1695,13 @@ fn render_http_tab(
     let mut http_url_error_reset = http_url_error.clone();
 
     let request_method_signal = http_method.clone();
-    let request_url_signal = http_url.clone();
+    let mut request_url_signal = http_url.clone();
     let request_headers_signal = http_headers.clone();
     let request_body_signal = http_body.clone();
     let request_response_signal = http_response.clone();
     let request_logs = logs.clone();
     let request_network = network_mode.clone();
-    let mut http_url_error_signal = http_url_error.clone();
+    let http_url_error_signal = http_url_error.clone();
 
     rsx! {
         div { class: "tab-body single-column",
@@ -1762,29 +1756,19 @@ fn render_http_tab(
                 div { class: "small-buttons",
                     button { class: "action", onclick: move |_| {
                             let method = request_method_signal.read().clone();
-                            let raw_url = request_url_signal.read().clone();
-                            let request_url_string = raw_url.trim().to_string();
-                            if request_url_string.is_empty() {
-                                http_url_error_signal
-                                    .set(Some("Enter a URL before sending the request.".to_string()));
+                            let Some((request_url_string, parsed_url)) = validate_request_url(
+                                request_url_signal,
+                                http_url_error_signal,
+                            ) else {
                                 return;
-                            }
-                            let parsed_url = match Url::parse(&request_url_string) {
-                                Ok(url) => url,
-                                Err(err) => {
-                                    http_url_error_signal.set(Some(format!(
-                                        "Enter a valid URL before sending the request: {err}"
-                                    )));
-                                    return;
-                                }
                             };
-                            http_url_error_signal.set(None);
+                            request_url_signal.set(request_url_string.clone());
                             let headers = request_headers_signal.read().clone();
                             let body = request_body_signal.read().clone();
                             let mut response_signal = request_response_signal.clone();
                             let logs_task = request_logs.clone();
                             let network = *request_network.read();
-                            let url_display = request_url_string.clone();
+                            let url_display = parsed_url.clone();
                             spawn(async move {
                                 let result = async move {
                                     let method_parsed = Method::from_bytes(method.as_bytes())
@@ -1825,6 +1809,47 @@ fn render_http_tab(
                     div { class: "outputs", {response_value} }
                 }
             }
+        }
+    }
+}
+
+fn validate_required_text(
+    value_signal: Signal<String>,
+    mut error_signal: Signal<Option<String>>,
+    message: &str,
+) -> Option<String> {
+    let value = value_signal.read().clone();
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        error_signal.set(Some(message.to_string()));
+        None
+    } else {
+        error_signal.set(None);
+        Some(trimmed.to_string())
+    }
+}
+
+fn validate_request_url(
+    url_signal: Signal<String>,
+    mut error_signal: Signal<Option<String>>,
+) -> Option<(String, Url)> {
+    let value = url_signal.read().clone();
+    let trimmed = value.trim().to_string();
+    if trimmed.is_empty() {
+        error_signal.set(Some("Enter a URL before sending the request.".to_string()));
+        return None;
+    }
+
+    match Url::parse(&trimmed) {
+        Ok(url) => {
+            error_signal.set(None);
+            Some((trimmed, url))
+        }
+        Err(err) => {
+            error_signal.set(Some(format!(
+                "Enter a valid URL before sending the request: {err}"
+            )));
+            None
         }
     }
 }

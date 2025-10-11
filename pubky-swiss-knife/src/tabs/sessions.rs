@@ -2,13 +2,12 @@ use anyhow::anyhow;
 use dioxus::prelude::*;
 use pubky::{Keypair, PubkySession, PublicKey};
 
-use crate::app::NetworkMode;
 use crate::tabs::format_session_info;
 use crate::utils::logging::{LogEntry, LogLevel, push_log};
-use crate::utils::pubky::build_pubky;
+use crate::utils::pubky::PubkyFacadeState;
 
 pub fn render_sessions_tab(
-    network_mode: Signal<NetworkMode>,
+    pubky_state: Signal<PubkyFacadeState>,
     keypair: Signal<Option<Keypair>>,
     session: Signal<Option<PubkySession>>,
     session_details: Signal<String>,
@@ -23,19 +22,19 @@ pub fn render_sessions_tab(
     let mut homeserver_binding = homeserver_input.clone();
     let mut signup_binding = signup_code_input.clone();
 
-    let signup_network = network_mode.clone();
     let signup_keypair = keypair.clone();
     let signup_homeserver = homeserver_input.clone();
     let signup_code_signal = signup_code_input.clone();
     let signup_session_signal = session.clone();
     let signup_details_signal = session_details.clone();
     let signup_logs = logs.clone();
+    let signup_pubky_state = pubky_state.clone();
 
-    let signin_network = network_mode.clone();
     let signin_keypair = keypair.clone();
     let signin_session_signal = session.clone();
     let signin_details_signal = session_details.clone();
     let signin_logs = logs.clone();
+    let signin_pubky_state = pubky_state.clone();
 
     let revalidate_session_signal = session.clone();
     let revalidate_details_signal = session_details.clone();
@@ -68,7 +67,15 @@ pub fn render_sessions_tab(
                                 return;
                             }
                             let signup_code = signup_code_signal.read().clone();
-                            let network = *signup_network.read();
+                            let maybe_pubky = { signup_pubky_state.read().facade() };
+                            let Some(pubky) = maybe_pubky else {
+                                push_log(
+                                    signup_logs.clone(),
+                                    LogLevel::Info,
+                                    "Pubky facade is still starting up. Try again shortly.",
+                                );
+                                return;
+                            };
                             let mut session_signal = signup_session_signal.clone();
                             let mut details_signal = signup_details_signal.clone();
                             let logs_task = signup_logs.clone();
@@ -76,7 +83,6 @@ pub fn render_sessions_tab(
                                 let result = async move {
                                     let homeserver_pk = PublicKey::try_from(homeserver.as_str())
                                         .map_err(|e| anyhow!("Invalid homeserver key: {e}"))?;
-                                    let pubky = build_pubky(network)?;
                                     let signer = pubky.signer(kp.clone());
                                     let session = signer
                                         .signup(&homeserver_pk, if signup_code.is_empty() { None } else { Some(signup_code.as_str()) })
@@ -98,13 +104,20 @@ pub fn render_sessions_tab(
                     }
                     button { class: "action secondary", onclick: move |_| {
                         if let Some(kp) = signin_keypair.read().as_ref().cloned() {
-                            let network = *signin_network.read();
+                            let maybe_pubky = { signin_pubky_state.read().facade() };
+                            let Some(pubky) = maybe_pubky else {
+                                push_log(
+                                    signin_logs.clone(),
+                                    LogLevel::Info,
+                                    "Pubky facade is still starting up. Try again shortly.",
+                                );
+                                return;
+                            };
                             let logs_task = signin_logs.clone();
                             let mut session_signal = signin_session_signal.clone();
                             let mut details_signal = signin_details_signal.clone();
                             spawn(async move {
                                 let result = async move {
-                                    let pubky = build_pubky(network)?;
                                     let signer = pubky.signer(kp.clone());
                                     let session = signer.signin().await?;
                                     session_signal.set(Some(session.clone()));

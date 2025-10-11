@@ -33,8 +33,8 @@ main.app {
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 20px;
-    padding: 22px 26px;
+    gap: 16px;
+    padding: 18px 22px;
     border-radius: 24px;
     background: linear-gradient(135deg, rgba(3, 24, 40, 0.92), rgba(6, 46, 68, 0.78));
     border: 1px solid rgba(0, 194, 255, 0.28);
@@ -58,8 +58,8 @@ main.app {
 }
 
 .hero img {
-    width: clamp(120px, 18vw, 160px);
-    height: clamp(120px, 18vw, 160px);
+    width: clamp(180px, 24vw, 260px);
+    height: clamp(180px, 24vw, 260px);
     filter: drop-shadow(0 12px 36px rgba(0, 205, 255, 0.5));
     z-index: 1;
 }
@@ -68,7 +68,7 @@ main.app {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    max-width: 440px;
+    max-width: 360px;
     z-index: 1;
 }
 

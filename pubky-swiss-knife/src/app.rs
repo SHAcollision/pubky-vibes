@@ -149,6 +149,8 @@ pub fn App() -> Element {
     };
     let has_logs = !logs_signal.read().is_empty();
     let mut toggle_logs_signal = show_logs.clone();
+    let retry_handle = pubky_facade.clone();
+    let retry_signal = network_mode.clone();
 
     rsx! {
         style { {APP_STYLE} }
@@ -241,7 +243,14 @@ pub fn App() -> Element {
                             button {
                                 class: "action",
                                 title: "Try to initialize Pubky again with the default settings",
-                                onclick: move |_| queue_pubky_build(pubky_facade, network_mode, retry_network, true),
+                                onclick: move |_| {
+                                    queue_pubky_build(
+                                        retry_handle.clone(),
+                                        retry_signal.clone(),
+                                        retry_network,
+                                        true,
+                                    );
+                                },
                                 "Retry"
                             }
                         }

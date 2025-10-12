@@ -5,8 +5,8 @@ use pubky::Keypair;
 use std::path::PathBuf;
 
 use crate::tabs::KeysTabState;
-use crate::utils::logging::ActivityLog;
 use crate::utils::file_dialog::{self, FileDialogResult};
+use crate::utils::logging::ActivityLog;
 use crate::utils::recovery::{
     decode_secret_key, load_keypair_from_recovery, normalize_pkarr_path,
     save_keypair_to_recovery_file,

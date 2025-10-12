@@ -29,8 +29,7 @@ pub fn launch_desktop() -> Result<()> {
             Config::new().with_window(
                 WindowBuilder::new()
                     .with_title("Pubky Swiss Knife")
-                    .with_inner_size(LogicalSize::new(1220.0, 820.0))
-                    .with_resizable(false),
+                    .with_inner_size(LogicalSize::new(1220.0, 820.0)),
             ),
         )
         .launch(App);

@@ -58,8 +58,18 @@ jobs:
         working-directory: pubky-swiss-knife
         run: dx bundle --android --release --json-output
 
+      - name: Locate Android project
+        id: locate-android
+        run: |
+          ANDROID_DIR=$(find pubky-swiss-knife/target/dx -maxdepth 4 -type d -name android -print -quit)
+          if [ -z "$ANDROID_DIR" ]; then
+            echo "Unable to find generated Android project" >&2
+            exit 1
+          fi
+          echo "dir=$ANDROID_DIR" >> "$GITHUB_OUTPUT"
+
       - name: Assemble release APK
-        working-directory: pubky-swiss-knife/target/dx/pubky-swiss-knife/release/android/app
+        working-directory: ${{ steps.locate-android.outputs.dir }}
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease --console=plain
@@ -67,7 +77,12 @@ jobs:
       - name: Locate APK
         id: locate-apk
         run: |
-          APK_PATH=$(find pubky-swiss-knife/target/dx/pubky-swiss-knife/release/android/app/build/outputs/apk/release -name "*.apk" -print -quit)
+          SEARCH_DIR="${{ steps.locate-android.outputs.dir }}/app/build/outputs/apk/release"
+          if [ ! -d "$SEARCH_DIR" ]; then
+            echo "Unable to find APK output directory at $SEARCH_DIR" >&2
+            exit 1
+          fi
+          APK_PATH=$(find "$SEARCH_DIR" -name "*.apk" -print -quit)
           if [ -z "$APK_PATH" ]; then
             echo "No APK produced" >&2
             exit 1

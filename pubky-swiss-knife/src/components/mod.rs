@@ -12,6 +12,7 @@ pub fn NetworkToggleOption(
     let mut setter = network_mode;
     rsx! {
         label {
+            class: "network-toggle-option",
             title: format_args!(
                 "Switch the Swiss Knife to the {} network so every tool talks to the right homeserver",
                 mode.label()
@@ -26,7 +27,7 @@ pub fn NetworkToggleOption(
                     on_select.call(mode);
                 },
             }
-            span { "{mode.label()}" }
+            span { class: "network-toggle-text", "{mode.label()}" }
         }
     }
 }
@@ -36,12 +37,30 @@ pub fn TabButton(tab: Tab, active_tab: Signal<Tab>) -> Element {
     let is_active = *active_tab.read() == tab;
     let mut setter = active_tab;
     let class_name = if is_active { "action active" } else { "action" };
+    let tab_label = tab.label();
+    let (view_box, paths) = tab.icon();
     rsx! {
         button {
             class: class_name,
+            aria_label: tab_label,
             title: format_args!("Show the {} toolbox for exploring that part of Pubky", tab.label()),
             onclick: move |_| setter.set(tab),
-            "{tab.label()}"
+            span { class: "tab-icon", aria_hidden: "true",
+                svg {
+                    view_box: view_box,
+                    fill: "none",
+                    stroke: "currentColor",
+                    stroke_width: "1.5",
+                    for path in paths {
+                        path {
+                            d: *path,
+                            stroke_linecap: "round",
+                            stroke_linejoin: "round",
+                        }
+                    }
+                }
+            }
+            span { class: "tab-label", "{tab_label}" }
         }
     }
 }

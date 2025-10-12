@@ -71,7 +71,7 @@ pub fn render_sessions_tab(
                             value: homeserver_value,
                             oninput: move |evt| homeserver_binding.set(evt.value()),
                             title: "Enter the homeserver's public key in base32 format",
-                            data-touch-tooltip: touch_tooltip(
+                            "data-touch-tooltip": touch_tooltip(
                                 "Enter the homeserver's public key in base32 format",
                             ),
                         }
@@ -82,7 +82,7 @@ pub fn render_sessions_tab(
                             value: signup_value,
                             oninput: move |evt| signup_binding.set(evt.value()),
                             title: "Optional invitation code provided by the homeserver",
-                            data-touch-tooltip: touch_tooltip(
+                            "data-touch-tooltip": touch_tooltip(
                                 "Optional invitation code provided by the homeserver",
                             ),
                         }
@@ -92,7 +92,7 @@ pub fn render_sessions_tab(
                     button {
                         class: "action",
                         title: "Create a new session on this homeserver with the loaded key",
-                        data-touch-tooltip: touch_tooltip(
+                        "data-touch-tooltip": touch_tooltip(
                             "Create a new session on this homeserver with the loaded key",
                         ),
                         onclick: move |_| {
@@ -138,7 +138,7 @@ pub fn render_sessions_tab(
                     button {
                         class: "action secondary",
                         title: "Sign in as the root account using the loaded key",
-                        data-touch-tooltip: touch_tooltip(
+                        "data-touch-tooltip": touch_tooltip(
                             "Sign in as the root account using the loaded key",
                         ),
                         onclick: move |_| {
@@ -174,7 +174,7 @@ pub fn render_sessions_tab(
                     button {
                         class: "action secondary",
                         title: "Check whether the current session token is still valid",
-                        data-touch-tooltip: touch_tooltip(
+                        "data-touch-tooltip": touch_tooltip(
                             "Check whether the current session token is still valid",
                         ),
                         onclick: move |_| {
@@ -205,7 +205,7 @@ pub fn render_sessions_tab(
                     button {
                         class: "action secondary",
                         title: "Sign out and revoke the current session token",
-                        data-touch-tooltip: touch_tooltip(
+                        "data-touch-tooltip": touch_tooltip(
                             "Sign out and revoke the current session token",
                         ),
                         onclick: move |_| {
@@ -239,11 +239,11 @@ pub fn render_sessions_tab(
                 if !details_value.is_empty() {
                     div {
                         class: "outputs copyable",
-                        data-touch-tooltip: touch_tooltip(
+                        "data-touch-tooltip": touch_tooltip(
                             "Tap to copy the current session details",
                         ),
-                        data-touch-copy: touch_copy_option(details_copy_value.clone()),
-                        data-copy-success: details_copy_success.clone(),
+                        "data-touch-copy": touch_copy_option(details_copy_value.clone()),
+                        "data-copy-success": details_copy_success.clone(),
                         {details_value}
                     }
                 }

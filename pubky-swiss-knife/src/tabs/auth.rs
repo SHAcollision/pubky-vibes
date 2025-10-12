@@ -107,7 +107,7 @@ pub fn render_auth_tab(
                             value: caps_value,
                             oninput: move |evt| caps_binding.set(evt.value()),
                             title: "Describe the permissions you're requesting, using the usual capability syntax",
-                            data-touch-tooltip: touch_tooltip(
+                            "data-touch-tooltip": touch_tooltip(
                                 "Describe the permissions you're requesting, using the usual capability syntax",
                             ),
                             placeholder: "Example: /pub/app/:rw"
@@ -119,7 +119,7 @@ pub fn render_auth_tab(
                             value: relay_value,
                             oninput: move |evt| relay_binding.set(evt.value()),
                             title: "Optional relay URL to direct this authorization through",
-                            data-touch-tooltip: touch_tooltip(
+                            "data-touch-tooltip": touch_tooltip(
                                 "Optional relay URL to direct this authorization through",
                             ),
                             placeholder: "https://your-relay.example/link/"
@@ -130,7 +130,7 @@ pub fn render_auth_tab(
                     button {
                         class: "action",
                         title: "Create an authorization link and QR code with the current settings",
-                        data-touch-tooltip: touch_tooltip(
+                        "data-touch-tooltip": touch_tooltip(
                             "Create an authorization link and QR code with the current settings",
                         ),
                         onclick: move |_| {
@@ -187,7 +187,7 @@ pub fn render_auth_tab(
                     button {
                         class: "action",
                         title: "Wait for the other party to approve and retrieve the resulting session",
-                        data-touch-tooltip: touch_tooltip(
+                        "data-touch-tooltip": touch_tooltip(
                             "Wait for the other party to approve and retrieve the resulting session",
                         ),
                         onclick: move |_| {
@@ -232,7 +232,7 @@ pub fn render_auth_tab(
                     button {
                         class: "action secondary",
                         title: "Cancel the current authorization request",
-                        data-touch-tooltip: touch_tooltip(
+                        "data-touch-tooltip": touch_tooltip(
                             "Cancel the current authorization request",
                         ),
                         onclick: move |_| {
@@ -263,7 +263,7 @@ pub fn render_auth_tab(
                                     src: data_url,
                                     alt: "pubkyauth QR code",
                                     title: "Open this pubkyauth:// link locally",
-                                    data-touch-tooltip: touch_tooltip(
+                                    "data-touch-tooltip": touch_tooltip(
                                         "Open this pubkyauth:// link locally",
                                     ),
                                     onclick: open_link_handler(logs.clone(), url_value.clone()),
@@ -272,7 +272,7 @@ pub fn render_auth_tab(
                                     class: "action secondary qr-launch",
                                     r#type: "button",
                                     title: "Open this pubkyauth:// link locally",
-                                    data-touch-tooltip: touch_tooltip(
+                                    "data-touch-tooltip": touch_tooltip(
                                         "Open this pubkyauth:// link locally",
                                     ),
                                     onclick: open_link_handler(logs.clone(), url_value.clone()),
@@ -282,9 +282,9 @@ pub fn render_auth_tab(
                         }
                         div {
                             class: "copyable",
-                            data-touch-tooltip: touch_tooltip(link_tooltip),
-                            data-touch-copy: touch_copy_option(copyable_url.clone()),
-                            data-copy-success: link_copy_success.clone(),
+                            "data-touch-tooltip": touch_tooltip(link_tooltip),
+                            "data-touch-copy": touch_copy_option(copyable_url.clone()),
+                            "data-copy-success": link_copy_success.clone(),
                             textarea {
                                 class: "tall",
                                 readonly: true,
@@ -307,7 +307,7 @@ pub fn render_auth_tab(
                             value: request_value,
                             oninput: move |evt| request_binding.set(evt.value()),
                             title: "Paste a pubkyauth:// link you were given",
-                            data-touch-tooltip: touch_tooltip(
+                            "data-touch-tooltip": touch_tooltip(
                                 "Paste a pubkyauth:// link you were given",
                             ),
                             placeholder: "pubkyauth:///?caps=..."
@@ -318,7 +318,7 @@ pub fn render_auth_tab(
                     button {
                         class: "action",
                         title: "Approve the request using your loaded key",
-                        data-touch-tooltip: touch_tooltip(
+                        "data-touch-tooltip": touch_tooltip(
                             "Approve the request using your loaded key",
                         ),
                         onclick: move |_| {

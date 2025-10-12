@@ -286,7 +286,7 @@ pub fn App() -> Element {
                             button {
                                 class: "action",
                                 title: "Try to initialize Pubky again with the default settings",
-                                data-touch-tooltip: touch_tooltip(
+                                "data-touch-tooltip": touch_tooltip(
                                     "Try to initialize Pubky again with the default settings",
                                 ),
                                 onclick: move |_| {
@@ -307,7 +307,7 @@ pub fn App() -> Element {
                 button {
                     class: "activity-button",
                     title: "Show or hide the live log of Pubky activity",
-                    data-touch-tooltip: touch_tooltip(
+                    "data-touch-tooltip": touch_tooltip(
                         "Show or hide the live log of Pubky activity",
                     ),
                     onclick: move |_| {

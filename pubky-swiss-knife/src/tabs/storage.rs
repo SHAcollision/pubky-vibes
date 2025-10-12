@@ -83,7 +83,7 @@ pub fn render_storage_tab(
                             value: path_value.clone(),
                             oninput: move |evt| storage_path_binding.set(evt.value()),
                             title: "Absolute path inside your session's private storage",
-                            data-touch-tooltip: touch_tooltip(
+                            "data-touch-tooltip": touch_tooltip(
                                 "Absolute path inside your session's private storage",
                             ),
                         }
@@ -95,7 +95,7 @@ pub fn render_storage_tab(
                             value: body_value.clone(),
                             oninput: move |evt| storage_body_binding.set(evt.value()),
                             title: "Content to upload when storing data",
-                            data-touch-tooltip: touch_tooltip(
+                            "data-touch-tooltip": touch_tooltip(
                                 "Content to upload when storing data",
                             ),
                         }
@@ -105,7 +105,7 @@ pub fn render_storage_tab(
                     button {
                         class: "action",
                         title: "Fetch the stored value at this path",
-                        data-touch-tooltip: touch_tooltip(
+                        "data-touch-tooltip": touch_tooltip(
                             "Fetch the stored value at this path",
                         ),
                         onclick: move |_| {
@@ -138,7 +138,7 @@ pub fn render_storage_tab(
                     button {
                         class: "action secondary",
                         title: "Write the body above to this storage path",
-                        data-touch-tooltip: touch_tooltip(
+                        "data-touch-tooltip": touch_tooltip(
                             "Write the body above to this storage path",
                         ),
                         onclick: move |_| {
@@ -172,7 +172,7 @@ pub fn render_storage_tab(
                     button {
                         class: "action secondary",
                         title: "Delete the resource stored at this path",
-                        data-touch-tooltip: touch_tooltip(
+                        "data-touch-tooltip": touch_tooltip(
                             "Delete the resource stored at this path",
                         ),
                         onclick: move |_| {
@@ -206,11 +206,11 @@ pub fn render_storage_tab(
                 if !session_response.is_empty() {
                     div {
                         class: "outputs copyable",
-                        data-touch-tooltip: touch_tooltip(
+                        "data-touch-tooltip": touch_tooltip(
                             "Tap to copy the storage response",
                         ),
-                        data-touch-copy: touch_copy_option(session_copy_value.clone()),
-                        data-copy-success: session_copy_success.clone(),
+                        "data-touch-copy": touch_copy_option(session_copy_value.clone()),
+                        "data-copy-success": session_copy_success.clone(),
                         {session_response}
                     }
                 }
@@ -225,7 +225,7 @@ pub fn render_storage_tab(
                             value: public_value.clone(),
                             oninput: move |evt| public_resource_binding.set(evt.value()),
                             title: "Enter a public storage path or pubky:// link to fetch",
-                            data-touch-tooltip: touch_tooltip(
+                            "data-touch-tooltip": touch_tooltip(
                                 "Enter a public storage path or pubky:// link to fetch",
                             ),
                         }
@@ -235,7 +235,7 @@ pub fn render_storage_tab(
                     button {
                         class: "action",
                         title: "Fetch the public resource using the Pubky client",
-                        data-touch-tooltip: touch_tooltip(
+                        "data-touch-tooltip": touch_tooltip(
                             "Fetch the public resource using the Pubky client",
                         ),
                         onclick: move |_| {
@@ -268,11 +268,11 @@ pub fn render_storage_tab(
                 if !public_resp.is_empty() {
                     div {
                         class: "outputs copyable",
-                        data-touch-tooltip: touch_tooltip(
+                        "data-touch-tooltip": touch_tooltip(
                             "Tap to copy the public response",
                         ),
-                        data-touch-copy: touch_copy_option(public_copy_value.clone()),
-                        data-copy-success: public_copy_success.clone(),
+                        "data-touch-copy": touch_copy_option(public_copy_value.clone()),
+                        "data-copy-success": public_copy_success.clone(),
                         {public_resp}
                     }
                 }

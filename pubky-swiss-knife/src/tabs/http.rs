@@ -64,7 +64,7 @@ pub fn render_http_tab(
                             value: method_value.clone(),
                             oninput: move |evt| method_binding.set(evt.value()),
                             title: "Choose the HTTP method for this request",
-                            data-touch-tooltip: touch_tooltip(
+                            "data-touch-tooltip": touch_tooltip(
                                 "Choose the HTTP method for this request",
                             ),
                             for option in ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"] {
@@ -79,7 +79,7 @@ pub fn render_http_tab(
                             oninput: move |evt| url_binding.set(evt.value()),
                             placeholder: "https:// or pubky://",
                             title: "Enter the destination URL, either https:// or pubky://",
-                            data-touch-tooltip: touch_tooltip(
+                            "data-touch-tooltip": touch_tooltip(
                                 "Enter the destination URL, either https:// or pubky://",
                             ),
                         }
@@ -94,7 +94,7 @@ pub fn render_http_tab(
                             oninput: move |evt| headers_binding.set(evt.value()),
                             placeholder: "Header-Name: value",
                             title: "List any request headers, one per line in Name: Value format",
-                            data-touch-tooltip: touch_tooltip(
+                            "data-touch-tooltip": touch_tooltip(
                                 "List any request headers, one per line in Name: Value format",
                             ),
                         }
@@ -107,7 +107,7 @@ pub fn render_http_tab(
                             oninput: move |evt| body_binding.set(evt.value()),
                             placeholder: "Request body (optional)",
                             title: "Optional request body to send",
-                            data-touch-tooltip: touch_tooltip(
+                            "data-touch-tooltip": touch_tooltip(
                                 "Optional request body to send",
                             ),
                         }
@@ -117,7 +117,7 @@ pub fn render_http_tab(
                     button {
                         class: "action",
                         title: "Send the request through the Pubky-aware client",
-                        data-touch-tooltip: touch_tooltip(
+                        "data-touch-tooltip": touch_tooltip(
                             "Send the request through the Pubky-aware client",
                         ),
                         onclick: move |_| {
@@ -173,11 +173,11 @@ pub fn render_http_tab(
                 if !response_value.is_empty() {
                     div {
                         class: "outputs copyable",
-                        data-touch-tooltip: touch_tooltip(
+                        "data-touch-tooltip": touch_tooltip(
                             "Tap to copy the HTTP response",
                         ),
-                        data-touch-copy: touch_copy_option(response_copy_value.clone()),
-                        data-copy-success: response_copy_success.clone(),
+                        "data-touch-copy": touch_copy_option(response_copy_value.clone()),
+                        "data-copy-success": response_copy_success.clone(),
                         {response_value}
                     }
                 }

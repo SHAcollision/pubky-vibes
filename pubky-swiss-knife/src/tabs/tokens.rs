@@ -45,7 +45,7 @@ pub fn render_tokens_tab(state: TokensTabState, logs: ActivityLog) -> Element {
                             value: caps_value,
                             oninput: move |evt| token_caps_binding.set(evt.value()),
                             title: "Enter the capabilities you want to grant, separated by commas",
-                            data-touch-tooltip: touch_tooltip(
+                            "data-touch-tooltip": touch_tooltip(
                                 "Enter the capabilities you want to grant, separated by commas",
                             ),
                             placeholder: "Comma-separated scopes"
@@ -56,7 +56,7 @@ pub fn render_tokens_tab(state: TokensTabState, logs: ActivityLog) -> Element {
                     button {
                         class: "action",
                         title: "Sign the listed scopes with the currently loaded key",
-                        data-touch-tooltip: touch_tooltip(
+                        "data-touch-tooltip": touch_tooltip(
                             "Sign the listed scopes with the currently loaded key",
                         ),
                         onclick: move |_| {
@@ -83,11 +83,11 @@ pub fn render_tokens_tab(state: TokensTabState, logs: ActivityLog) -> Element {
                 if !token_value.is_empty() {
                     div {
                         class: "outputs copyable",
-                        data-touch-tooltip: touch_tooltip(
+                        "data-touch-tooltip": touch_tooltip(
                             "Tap to copy the signed token",
                         ),
-                        data-touch-copy: touch_copy_option(token_copy_value.clone()),
-                        data-copy-success: token_copy_success.clone(),
+                        "data-touch-copy": touch_copy_option(token_copy_value.clone()),
+                        "data-copy-success": token_copy_success.clone(),
                         {token_value}
                     }
                 }

@@ -23,13 +23,13 @@ pub fn NetworkToggleOption(
         label {
             class: "network-toggle-option",
             title: label_tooltip.clone(),
-            data-touch-tooltip: touch_tooltip(label_tooltip),
+            "data-touch-tooltip": touch_tooltip(label_tooltip),
             input {
                 r#type: "radio",
                 name: "network-mode",
                 checked: is_selected,
                 title: radio_tooltip.clone(),
-                data-touch-tooltip: touch_tooltip(radio_tooltip),
+                "data-touch-tooltip": touch_tooltip(radio_tooltip),
                 onchange: move |_| {
                     setter.set(mode);
                     on_select.call(mode);
@@ -56,7 +56,7 @@ pub fn TabButton(tab: Tab, active_tab: Signal<Tab>) -> Element {
             class: class_name,
             aria_label: tab_label,
             title: tab_tooltip.clone(),
-            data-touch-tooltip: touch_tooltip(tab_tooltip),
+            "data-touch-tooltip": touch_tooltip(tab_tooltip),
             onclick: move |_| setter.set(tab),
             span { class: "tab-icon", aria_hidden: "true",
                 svg {

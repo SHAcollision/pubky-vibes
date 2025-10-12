@@ -24,6 +24,7 @@ tempfile = "3"
 dioxus = { version = "0.7.0-rc.1", features = ["desktop", "mobile"] }
 dioxus-desktop = "0.7.0-rc.1"
 rfd = "0.14"
+open = "5"
 
 [target.'cfg(target_os = "android")'.dependencies]
 dioxus = { version = "0.7.0-rc.1", features = ["mobile"] }

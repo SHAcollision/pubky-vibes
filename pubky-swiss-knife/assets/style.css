@@ -224,6 +224,9 @@ select {
     font-size: 0.95rem;
     transition: border 0.2s ease, box-shadow 0.2s ease;
     width: 100%;
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
 }
 
 input::placeholder,
@@ -246,6 +249,10 @@ textarea {
     resize: none;
 }
 
+textarea[readonly] {
+    cursor: text;
+}
+
 textarea.tall {
     min-height: 8.5rem;
 }
@@ -256,7 +263,8 @@ textarea.tall {
     gap: 0.75rem;
 }
 
-button.action {
+button.action,
+a.action {
     padding: 0.65rem 1.15rem;
     border: none;
     border-radius: 0.75rem;
@@ -264,15 +272,21 @@ button.action {
     color: #f8fafc;
     font-weight: 600;
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
     transition: transform 0.12s ease, box-shadow 0.2s ease;
 }
 
-button.action:hover {
+button.action:hover,
+a.action:hover {
     transform: translateY(-2px);
     box-shadow: 0 14px 28px rgba(37, 99, 235, 0.35);
 }
 
-button.secondary {
+button.secondary,
+a.secondary {
     background: rgba(30, 41, 59, 0.85);
     color: rgba(226, 232, 240, 0.9);
 }
@@ -295,16 +309,40 @@ button.secondary {
     flex-wrap: wrap;
 }
 
+.qr-visual {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.qr-link {
+    display: inline-flex;
+}
+
 .qr-container img {
     background: #f8fafc;
     padding: 0.75rem;
     border-radius: 1.1rem;
     box-shadow: 0 12px 30px rgba(15, 23, 42, 0.4);
     max-width: 220px;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.qr-container img:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.5);
 }
 
 .qr-container textarea {
     width: min(420px, 100%);
+}
+
+.qr-launch {
+    width: 100%;
+    max-width: 220px;
+    justify-content: center;
 }
 
 .auth-status {

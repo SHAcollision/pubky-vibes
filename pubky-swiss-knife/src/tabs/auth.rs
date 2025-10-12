@@ -1,12 +1,37 @@
 use anyhow::{Context, anyhow};
+use dioxus::events::MouseData;
 use dioxus::prelude::*;
 use pubky::{Capabilities, PubkyAuthFlow};
 use url::Url;
 
 use crate::tabs::{AuthTabState, format_session_info};
+#[cfg(not(target_os = "android"))]
+use crate::utils::links::open_pubkyauth_link;
 use crate::utils::logging::ActivityLog;
 use crate::utils::pubky::PubkyFacadeHandle;
 use crate::utils::qr::generate_qr_data_url;
+
+fn open_link_handler(logs: ActivityLog, link: String) -> impl FnMut(Event<MouseData>) + 'static {
+    move |evt| {
+        let trimmed = link.trim();
+        if trimmed.is_empty() {
+            evt.prevent_default();
+            logs.error("No pubkyauth link available to open");
+            return;
+        }
+        #[cfg(not(target_os = "android"))]
+        {
+            evt.prevent_default();
+            match open_pubkyauth_link(trimmed) {
+                Ok(()) => logs.success("Opened pubkyauth link locally"),
+                Err(err) => logs.error(format!("Failed to open pubkyauth link: {err}")),
+            }
+        }
+
+        #[cfg(target_os = "android")]
+        logs.info("Opening pubkyauth link in a new tab");
+    }
+}
 
 #[allow(clippy::too_many_arguments, clippy::clone_on_copy)]
 pub fn render_auth_tab(
@@ -33,6 +58,12 @@ pub fn render_auth_tab(
     let status_value = { status.read().clone() };
     let qr_value = { qr_data.read().clone() };
     let request_value = { request_body.read().clone() };
+    let share_link = url_value.trim().to_string();
+    let share_href = if share_link.is_empty() {
+        String::from("#")
+    } else {
+        share_link.clone()
+    };
 
     let mut caps_binding = capabilities.clone();
     let mut relay_binding = relay.clone();
@@ -214,8 +245,31 @@ pub fn render_auth_tab(
                 }
                 if qr_value.is_some() || !url_value.trim().is_empty() {
                     div { class: "qr-container",
-                        if let Some(data_url) = qr_value {
-                            img { src: data_url, alt: "pubkyauth QR code" }
+                        if let Some(data_url) = qr_value.clone() {
+                            div { class: "qr-visual",
+                                a {
+                                    class: "qr-link",
+                                    href: share_href.clone(),
+                                    target: "_blank",
+                                    rel: "noopener noreferrer",
+                                    title: "Open this pubkyauth:// link locally",
+                                    onclick: open_link_handler(logs.clone(), share_link.clone()),
+                                    img {
+                                        src: data_url,
+                                        alt: "pubkyauth QR code",
+                                    }
+                                }
+                                a {
+                                    class: "action secondary qr-launch",
+                                    href: share_href.clone(),
+                                    target: "_blank",
+                                    rel: "noopener noreferrer",
+                                    role: "button",
+                                    title: "Open this pubkyauth:// link locally",
+                                    onclick: open_link_handler(logs.clone(), share_link.clone()),
+                                    "Open link locally",
+                                }
+                            }
                         }
                         textarea {
                             class: "tall",

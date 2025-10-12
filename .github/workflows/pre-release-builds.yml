@@ -1,4 +1,4 @@
-name: Portable apps pre-release builds
+name: Pre-release
 
 on:
   workflow_dispatch:

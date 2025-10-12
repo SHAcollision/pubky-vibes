@@ -1,4 +1,4 @@
-name: Portable Homeserver Checks
+name: Homeserver
 
 on:
   pull_request:

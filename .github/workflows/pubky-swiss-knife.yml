@@ -1,4 +1,4 @@
-name: Pubky Swiss Knife Checks
+name: SwissKnife
 
 on:
   pull_request:

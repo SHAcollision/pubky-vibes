@@ -16,6 +16,11 @@ again, confirm that the workflow logged an `dx bundle (aarch64-linux-android -> 
 The resulting APK weighs roughly 8–9 MB when stripped and zipped. A significantly smaller artifact usually indicates that the
 native library directory failed to make it into the build.
 
+If Gradle reports `Missing libc++_shared.so for ABI arm64-v8a` during CI, confirm that the workflow copied the runtime from the
+active NDK into `app/src/main/jniLibs/arm64-v8a/`. The Android build requires the C++ runtime alongside our Rust-produced
+`libdioxusmain.so`; the workflow now discovers the correct `libc++_shared.so` for each targeted triple and stages it with the
+other JNI libraries before invoking Gradle.
+
 ## Legacy ABI considerations
 
 If we later reintroduce additional ABIs, keep the following historical issues in mind:

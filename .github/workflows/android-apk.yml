@@ -120,6 +120,19 @@ jobs:
 
             mkdir -p "$LIB_CACHE/$abi"
             rsync -a --delete "$abi_dir/" "$LIB_CACHE/$abi/"
+
+            if [ -z "${ANDROID_NDK_HOME:-}" ] || [ ! -d "$ANDROID_NDK_HOME" ]; then
+              echo "ANDROID_NDK_HOME is not set or does not point to an installed NDK" >&2
+              exit 1
+            fi
+
+            libcxx_src=$(find "$ANDROID_NDK_HOME/toolchains/llvm/prebuilt" -type f -name 'libc++_shared.so' -path "*${triple}*" | head -n1)
+            if [ -z "$libcxx_src" ]; then
+              echo "Unable to locate libc++_shared.so for $triple within $ANDROID_NDK_HOME" >&2
+              exit 1
+            fi
+
+            cp "$libcxx_src" "$LIB_CACHE/$abi/libc++_shared.so"
             last_project_dir="$project_dir"
           done
 

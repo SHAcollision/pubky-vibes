@@ -12,7 +12,6 @@ jobs:
       ANDROID_HOME: ${{ github.workspace }}/android-sdk
       ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
       NDK_VERSION: 25.2.9519653
-      NDK_HOME: ${{ github.workspace }}/android-sdk/ndk/${{ env.NDK_VERSION }}
     steps:
       - uses: actions/checkout@v4
 
@@ -47,19 +46,26 @@ jobs:
           yes | sdkmanager --licenses
           sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0" "ndk;$NDK_VERSION" "cmake;3.22.1"
 
+      - name: Export NDK environment variables
+        run: |
+          echo "NDK_HOME=$ANDROID_HOME/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
+          echo "$ANDROID_HOME/ndk/$NDK_VERSION" >> "$GITHUB_PATH"
+
       - name: Build Android bundle
+        working-directory: pubky-swiss-knife
         run: dx bundle --android --release --json-output
 
       - name: Assemble release APK
+        working-directory: pubky-swiss-knife/target/dx/pubky-swiss-knife/release/android/app
         run: |
-          cd target/dx/pubky-swiss-knife/release/android/app
           chmod +x gradlew
           ./gradlew assembleRelease --console=plain
 
       - name: Locate APK
         id: locate-apk
         run: |
-          APK_PATH=$(find target/dx/pubky-swiss-knife/release/android/app/build/outputs/apk/release -name "*.apk" -print -quit)
+          APK_PATH=$(find pubky-swiss-knife/target/dx/pubky-swiss-knife/release/android/app/build/outputs/apk/release -name "*.apk" -print -quit)
           if [ -z "$APK_PATH" ]; then
             echo "No APK produced" >&2
             exit 1

@@ -29,6 +29,22 @@ Creating symbolic links from the `armv7a` filenames to the `armv7` aliases insid
 `$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin` resolves the mismatch and lets the bundle step finish for the
 `armv7-linux-androideabi` target without downgrading the NDK.
 
+## `dx bundle`: undefined symbol `__atomic_load_8`
+
+Building the `i686-linux-android` variant links mimalloc statically, which pulls in 64-bit atomic intrinsics (`__atomic_load_8`,
+`__atomic_store_8`, etc.). The 32-bit Android sysroot does not ship those helpers in `libc`, so the linker fails with `undefined
+symbol: __atomic_load_8` unless the final binary links against `libatomic`.
+
+Add a Cargo configuration file that passes `-Clink-arg=-latomic` for the `i686-linux-android` target:
+
+```toml
+[target.i686-linux-android]
+rustflags = ["-Clink-arg=-latomic"]
+```
+
+Once `cargo` sees this config (for example in `pubky-swiss-knife/.cargo/config.toml`) the bundler reuses it automatically and the
+32-bit build succeeds alongside the 64-bit variants.
+
 [^pixel64]: See Google's "[Moving the Android ecosystem to 64-bit only](https://android-developers.googleblog.com/2022/08/moving-android-ecosystem-to-64-bit-only.html)"
 announcement and contemporaneous Pixel 7 reviews noting the absence of 32-bit app support, such as Ars Technica's
 "[Google Pixel 7 review: Improved cameras make a great phone even better](https://arstechnica.com/gadgets/2022/10/google-pixel-7-review/)".

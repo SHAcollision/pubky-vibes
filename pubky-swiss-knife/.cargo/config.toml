@@ -1,0 +1,2 @@
+[target.i686-linux-android]
+rustflags = ["-Clink-arg=-latomic"]

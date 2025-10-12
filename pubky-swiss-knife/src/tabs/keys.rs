@@ -30,27 +30,27 @@ pub fn render_keys_tab(state: KeysTabState, logs: ActivityLog) -> Element {
     let recovery_path_value = { recovery_path.read().clone() };
     let recovery_pass_value = { recovery_passphrase.read().clone() };
 
-    let mut generate_secret_input = secret_input.clone();
-    let mut generate_keypair = keypair.clone();
+    let mut generate_secret_input = secret_input;
+    let mut generate_keypair = keypair;
     let generate_logs = logs.clone();
 
-    let mut export_secret_input = secret_input.clone();
-    let export_keypair = keypair.clone();
+    let mut export_secret_input = secret_input;
+    let export_keypair = keypair;
     let export_logs = logs.clone();
 
-    let mut import_keypair_signal = keypair.clone();
-    let import_secret_signal = secret_input.clone();
+    let mut import_keypair_signal = keypair;
+    let import_secret_signal = secret_input;
     let import_logs = logs.clone();
 
-    let load_path_signal = recovery_path.clone();
-    let load_pass_signal = recovery_passphrase.clone();
-    let load_keypair_signal = keypair.clone();
-    let load_secret_signal = secret_input.clone();
+    let load_path_signal = recovery_path;
+    let load_pass_signal = recovery_passphrase;
+    let load_keypair_signal = keypair;
+    let load_secret_signal = secret_input;
     let load_logs = logs.clone();
 
-    let save_path_signal = recovery_path.clone();
-    let save_pass_signal = recovery_passphrase.clone();
-    let save_keypair_signal = keypair.clone();
+    let save_path_signal = recovery_path;
+    let save_pass_signal = recovery_passphrase;
+    let save_keypair_signal = keypair;
     let save_logs = logs.clone();
 
     let mut secret_input_binding = secret_input;

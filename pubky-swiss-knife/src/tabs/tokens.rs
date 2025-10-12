@@ -15,11 +15,11 @@ pub fn render_tokens_tab(state: TokensTabState, logs: ActivityLog) -> Element {
     let caps_value = { capabilities.read().clone() };
     let token_value = { output.read().clone() };
 
-    let mut token_caps_binding = capabilities.clone();
+    let mut token_caps_binding = capabilities;
 
-    let sign_keypair = keypair.clone();
-    let sign_caps = capabilities.clone();
-    let mut sign_token = output.clone();
+    let sign_keypair = keypair;
+    let sign_caps = capabilities;
+    let mut sign_token = output;
     let sign_logs = logs.clone();
 
     rsx! {

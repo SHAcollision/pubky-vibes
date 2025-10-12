@@ -29,18 +29,18 @@ pub fn render_http_tab(
     let body_value = { body.read().clone() };
     let response_value = { response.read().clone() };
 
-    let mut method_binding = method.clone();
-    let mut url_binding = url.clone();
-    let mut headers_binding = headers.clone();
-    let mut body_binding = body.clone();
+    let mut method_binding = method;
+    let mut url_binding = url;
+    let mut headers_binding = headers;
+    let mut body_binding = body;
 
-    let request_method_signal = method.clone();
-    let request_url_signal = url.clone();
-    let request_headers_signal = headers.clone();
-    let request_body_signal = body.clone();
-    let request_response_signal = response.clone();
+    let request_method_signal = method;
+    let request_url_signal = url;
+    let request_headers_signal = headers;
+    let request_body_signal = body;
+    let request_response_signal = response;
     let request_logs = logs.clone();
-    let request_network = network_mode.clone();
+    let request_network = network_mode;
 
     rsx! {
         div { class: "tab-body single-column",
@@ -103,7 +103,7 @@ pub fn render_http_tab(
                             }
                             let headers = request_headers_signal.read().clone();
                             let body = request_body_signal.read().clone();
-                            let mut response_signal = request_response_signal.clone();
+                            let mut response_signal = request_response_signal;
                             let logs_task = request_logs.clone();
                             let network = *request_network.read();
                             spawn(async move {

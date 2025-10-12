@@ -69,7 +69,7 @@ impl PubkyFacadeHandle {
     }
 
     pub fn set(&self, next: PubkyFacadeState) {
-        let mut setter = self.state.clone();
+        let mut setter = self.state;
         setter.set(next);
     }
 

@@ -308,7 +308,6 @@ fn queue_pubky_build(
     pubky_handle.set(PubkyFacadeState::loading(target));
 
     let handle = pubky_handle.clone();
-    let network_signal = network_signal.clone();
     spawn(async move {
         match crate::utils::pubky::build_pubky_facade(target).await {
             Ok(pubky) => {

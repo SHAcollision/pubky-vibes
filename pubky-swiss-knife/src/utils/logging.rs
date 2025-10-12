@@ -62,7 +62,7 @@ impl ActivityLog {
     }
 
     pub fn log(&self, level: LogLevel, message: impl Into<String>) {
-        push_log(self.entries.clone(), level, message);
+        push_log(self.entries, level, message);
     }
 }
 

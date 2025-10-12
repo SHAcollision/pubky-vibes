@@ -140,7 +140,7 @@ pub fn render_keys_tab(
                                             choose_recovery_path_signal.set(path.display().to_string());
                                         }
                                         FileDialogResult::Unavailable => push_log(
-                                            choose_logs.clone(),
+                                            choose_logs,
                                             LogLevel::Info,
                                             file_dialog::MANUAL_ENTRY_HINT,
                                         ),
@@ -178,7 +178,7 @@ pub fn render_keys_tab(
                                     }
                                     FileDialogResult::Unavailable => {
                                         push_log(
-                                            load_logs.clone(),
+                                            load_logs,
                                             LogLevel::Info,
                                             file_dialog::MANUAL_ENTRY_HINT,
                                         );
@@ -243,7 +243,7 @@ pub fn render_keys_tab(
                                         }
                                         FileDialogResult::Unavailable => {
                                             push_log(
-                                                save_logs.clone(),
+                                                save_logs,
                                                 LogLevel::Info,
                                                 file_dialog::MANUAL_ENTRY_HINT,
                                             );

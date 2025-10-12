@@ -19,6 +19,7 @@ This plan follows the Dioxus 0.7.0 guides for mobile tooling and bundling to del
 ## 4. Build & validation steps
 - Run `cargo check` for the desktop target to confirm the refactor keeps the native build healthy.
 - Use the Dioxus CLI (`dx bundle --android --release`) to generate the Gradle project and compile the native libraries for Android. The project pins `dioxus-cli` 0.7.0-rc.1, the release candidate referenced by the Dioxus 0.7.0 Android guide.
+- Repeat the bundle step for every supported Rust Android triple (`aarch64-linux-android`, `armv7-linux-androideabi`, `i686-linux-android`, `x86_64-linux-android`) and copy the produced `jniLibs/<abi>` folders into a shared Gradle project so the final APK ships native code for all ABIs.
 - Archive the resulting APK (`target/dx/.../android/app/build/outputs/apk/release/app-release-unsigned.apk`) as a test artifact to confirm the tooling works end-to-end.
 
 ## 5. Continuous integration

@@ -69,9 +69,78 @@ jobs:
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
           echo "$ANDROID_HOME/ndk/$NDK_VERSION" >> "$GITHUB_PATH"
 
-      - name: Build Android bundle
+      - name: Build Android bundles for every ABI
         working-directory: pubky-swiss-knife
-        run: dx bundle --android --release --json-output
+        env:
+          ANDROID_TRIPLES: |
+            aarch64-linux-android:arm64-v8a
+            armv7-linux-androideabi:armeabi-v7a
+            i686-linux-android:x86
+            x86_64-linux-android:x86_64
+        run: |
+          set -euo pipefail
+
+          mapfile -t TRIPLES <<<"${ANDROID_TRIPLES}"
+          if [ "${#TRIPLES[@]}" -eq 0 ]; then
+            echo "No Android targets defined" >&2
+            exit 1
+          fi
+
+          LIB_CACHE="target/dx/android-libs"
+          rm -rf "$LIB_CACHE"
+          mkdir -p "$LIB_CACHE"
+
+          last_project_dir=""
+
+          for entry in "${TRIPLES[@]}"; do
+            entry="${entry%%\#*}" # strip comments if any
+            [ -z "$entry" ] && continue
+            triple="${entry%%:*}"
+            abi="${entry#*:}"
+
+            if [ -z "$triple" ] || [ -z "$abi" ] || [ "$triple" = "$abi" ]; then
+              echo "Invalid ABI mapping entry: '$entry'" >&2
+              exit 1
+            fi
+
+            echo "::group::dx bundle ($triple -> $abi)"
+            dx bundle --android --release --target "$triple" --json-output
+            echo "::endgroup::"
+
+            project_gradlew=$(find target/dx -maxdepth 6 -type f -name gradlew -print -quit)
+            if [ -z "$project_gradlew" ]; then
+              echo "Unable to locate generated Android project for $triple" >&2
+              exit 1
+            fi
+
+            project_dir=$(dirname "$project_gradlew")
+            abi_dir="$project_dir/app/src/main/jniLibs/$abi"
+
+            if [ ! -d "$abi_dir" ]; then
+              echo "Expected JNI lib directory for $abi missing at $abi_dir" >&2
+              exit 1
+            fi
+
+            mkdir -p "$LIB_CACHE/$abi"
+            rsync -a --delete "$abi_dir/" "$LIB_CACHE/$abi/"
+            last_project_dir="$project_dir"
+          done
+
+          if [ -z "$last_project_dir" ]; then
+            echo "Android project directory not captured" >&2
+            exit 1
+          fi
+
+          for entry in "${TRIPLES[@]}"; do
+            entry="${entry%%\#*}"
+            [ -z "$entry" ] && continue
+            abi="${entry#*:}"
+            dest="$last_project_dir/app/src/main/jniLibs/$abi"
+            mkdir -p "$dest"
+            rsync -a --delete "$LIB_CACHE/$abi/" "$dest/"
+          done
+
+          echo "ANDROID_PROJECT_DIR=$last_project_dir" >> "$GITHUB_ENV"
 
       - name: Locate Android project
         id: locate-android
@@ -120,6 +189,27 @@ jobs:
             "$ALIGNED_APK"
           "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify "$SIGNED_APK"
           echo "apk=$SIGNED_APK" >> "$GITHUB_OUTPUT"
+
+      - name: Verify APK ABI coverage
+        run: |
+          set -euo pipefail
+          APK="${{ steps.sign-apk.outputs.apk }}"
+          declare -a ABIS=(arm64-v8a armeabi-v7a x86 x86_64)
+          missing=0
+          for abi in "${ABIS[@]}"; do
+            if ! unzip -l "$APK" "lib/$abi/libdioxusmain.so" >/dev/null 2>&1; then
+              echo "Missing libdioxusmain.so for ABI $abi" >&2
+              missing=1
+            fi
+            if ! unzip -l "$APK" "lib/$abi/libc++_shared.so" >/dev/null 2>&1; then
+              echo "Missing libc++_shared.so for ABI $abi" >&2
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            echo "One or more ABIs are missing native libraries" >&2
+            exit 1
+          fi
 
       - name: Upload release APK
         uses: actions/upload-artifact@v4

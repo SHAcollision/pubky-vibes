@@ -82,25 +82,56 @@ header h1 {
 }
 
 .network-toggle {
-    display: flex;
-    gap: 0.75rem;
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.9rem;
-    border: 1px solid rgba(148, 163, 184, 0.2);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(148, 163, 184, 0.24);
     background: rgba(15, 23, 42, 0.7);
+    box-shadow: inset 0 0 0 1px rgba(94, 234, 212, 0.08);
 }
 
-.network-toggle label {
+.network-toggle-option {
+    position: relative;
     display: flex;
-    align-items: center;
-    gap: 0.35rem;
+    flex: 1 1 0;
+    min-width: 0;
     cursor: pointer;
     font-size: 0.9rem;
-    color: rgba(226, 232, 240, 0.85);
+    font-weight: 600;
+    color: rgba(226, 232, 240, 0.8);
 }
 
-.network-toggle input[type="radio"] {
-    accent-color: #60a5fa;
+.network-toggle-option input[type="radio"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    opacity: 0;
+}
+
+.network-toggle-text {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    padding: 0.5rem 1.1rem;
+    border-radius: 0.75rem;
+    background: rgba(30, 41, 59, 0.6);
+    transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+    white-space: nowrap;
+}
+
+.network-toggle-option input[type="radio"]:checked + .network-toggle-text {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.92), rgba(94, 234, 212, 0.9));
+    color: #0f172a;
+    box-shadow: 0 12px 22px rgba(59, 130, 246, 0.32);
+}
+
+.network-toggle-option input[type="radio"]:focus-visible + .network-toggle-text {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.45);
 }
 
 main {
@@ -118,6 +149,9 @@ main {
 }
 
 .tabs button {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
     padding: 0.75rem 1rem;
     border: 1px solid transparent;
     border-radius: 0.85rem;
@@ -139,6 +173,27 @@ main {
     border-color: rgba(148, 163, 184, 0.32);
     box-shadow: 0 12px 32px rgba(30, 64, 175, 0.35);
     transform: translateX(8px);
+}
+
+.tab-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.3rem;
+    height: 1.3rem;
+    color: inherit;
+}
+
+.tab-icon svg {
+    width: 100%;
+    height: 100%;
+}
+
+.tab-label {
+    flex: 1 1 auto;
+    display: inline-flex;
+    align-items: center;
+    line-height: 1.25;
 }
 
 .panel {
@@ -535,14 +590,14 @@ button.secondary {
     .network-toggle {
         width: 100%;
         justify-content: center;
-        gap: 0.5rem;
     }
 
-    .network-toggle label {
+    .network-toggle-option {
         flex: 1 1 0;
-        justify-content: center;
-        padding: 0.35rem 0.25rem;
-        text-align: center;
+    }
+
+    .network-toggle-text {
+        padding: 0.45rem 0.85rem;
     }
 
     main {
@@ -573,9 +628,17 @@ button.secondary {
 
     .tabs button {
         flex: 1 0 auto;
-        text-align: center;
-        white-space: nowrap;
-        padding: 0.65rem 0.9rem;
+        justify-content: center;
+        padding: 0.6rem 0.75rem;
+    }
+
+    .tabs button .tab-label {
+        display: none;
+    }
+
+    .tab-icon {
+        width: 1.35rem;
+        height: 1.35rem;
     }
 
     .tabs button:hover,
@@ -631,13 +694,11 @@ button.secondary {
     }
 
     .network-toggle {
-        flex-direction: column;
-        align-items: stretch;
-        padding: 0.6rem;
+        padding: 0.4rem;
     }
 
-    .network-toggle label {
-        padding: 0.45rem 0.5rem;
+    .network-toggle-text {
+        padding: 0.4rem 0.65rem;
         font-size: 0.85rem;
     }
 
@@ -652,5 +713,10 @@ button.secondary {
 
     .qr-container {
         flex-direction: column;
+    }
+
+    .tab-icon {
+        width: 1.25rem;
+        height: 1.25rem;
     }
 }

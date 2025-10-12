@@ -7,7 +7,6 @@ use std::path::PathBuf;
 use crate::tabs::KeysTabState;
 use crate::utils::logging::ActivityLog;
 use crate::utils::file_dialog::{self, FileDialogResult};
-use crate::utils::logging::{LogEntry, LogLevel, push_log};
 use crate::utils::recovery::{
     decode_secret_key, load_keypair_from_recovery, normalize_pkarr_path,
     save_keypair_to_recovery_file,
@@ -141,11 +140,9 @@ pub fn render_keys_tab(state: KeysTabState, logs: ActivityLog) -> Element {
                                         FileDialogResult::Selected(path) => {
                                             choose_recovery_path_signal.set(path.display().to_string());
                                         }
-                                        FileDialogResult::Unavailable => push_log(
-                                            choose_logs,
-                                            LogLevel::Info,
-                                            file_dialog::MANUAL_ENTRY_HINT,
-                                        ),
+                                        FileDialogResult::Unavailable => {
+                                            choose_logs.info(file_dialog::MANUAL_ENTRY_HINT)
+                                        }
                                         FileDialogResult::Cancelled => {}
                                     }
                                 },
@@ -179,11 +176,7 @@ pub fn render_keys_tab(state: KeysTabState, logs: ActivityLog) -> Element {
                                         Some(display)
                                     }
                                     FileDialogResult::Unavailable => {
-                                        push_log(
-                                            load_logs,
-                                            LogLevel::Info,
-                                            file_dialog::MANUAL_ENTRY_HINT,
-                                        );
+                                        load_logs.info(file_dialog::MANUAL_ENTRY_HINT);
                                         None
                                     }
                                     FileDialogResult::Cancelled => None,
@@ -238,11 +231,7 @@ pub fn render_keys_tab(state: KeysTabState, logs: ActivityLog) -> Element {
                                             Some(display)
                                         }
                                         FileDialogResult::Unavailable => {
-                                            push_log(
-                                                save_logs,
-                                                LogLevel::Info,
-                                                file_dialog::MANUAL_ENTRY_HINT,
-                                            );
+                                            save_logs.info(file_dialog::MANUAL_ENTRY_HINT);
                                             None
                                         }
                                         FileDialogResult::Cancelled => None,

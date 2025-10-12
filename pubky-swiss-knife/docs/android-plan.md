@@ -7,7 +7,7 @@ This plan follows the Dioxus 0.7.0 guides for mobile tooling and bundling to del
 - Provision the Android SDK, NDK 25.2.9519653, command-line tools, CMake, and platform/build tools through `sdkmanager`, mirroring the setup described in the Dioxus mobile platform guide.
 - Export `JAVA_HOME`, `ANDROID_HOME`/`ANDROID_SDK_ROOT`, `NDK_HOME`, and extend `PATH` with the SDK tools (`cmdline-tools`, `platform-tools`, and emulator binaries) to satisfy the CLI environment checks before building or serving Android targets.
 - Patch the LLVM toolchain inside the NDK so `armv7-linux-androideabiXX-clang{,++}` resolves to the shipped `armv7a-linux-androideabiXX-clang{,++}` binaries; without the aliases Dioxus fails to compile the 32-bit target during CI.
-- Configure Cargo to link `libatomic` when building the `i686-linux-android` target so mimalloc and other crates resolve the `__atomic_*` intrinsics that 32-bit Android still expects from the system runtime.
+- Provide a build script that locates `libatomic` inside the active NDK and links it automatically when compiling the `i686-linux-android` target so mimalloc and other crates resolve the `__atomic_*` intrinsics that 32-bit Android still expect from the system runtime without requiring local `RUSTFLAGS` overrides.
 
 ## 2. Platform-neutral project structure
 - Split platform bootstrapping from the UI so both desktop and mobile launch paths reuse the same `App` component tree.

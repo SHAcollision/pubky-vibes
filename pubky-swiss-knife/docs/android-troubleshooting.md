@@ -35,15 +35,11 @@ Building the `i686-linux-android` variant links mimalloc statically, which pulls
 `__atomic_store_8`, etc.). The 32-bit Android sysroot does not ship those helpers in `libc`, so the linker fails with `undefined
 symbol: __atomic_load_8` unless the final binary links against `libatomic`.
 
-Add a Cargo configuration file that passes `-Clink-arg=-latomic` for the `i686-linux-android` target:
-
-```toml
-[target.i686-linux-android]
-rustflags = ["-Clink-arg=-latomic"]
-```
-
-Once `cargo` sees this config (for example in `pubky-swiss-knife/.cargo/config.toml`) the bundler reuses it automatically and the
-32-bit build succeeds alongside the 64-bit variants.
+The repository ships a `build.rs` helper that scans the configured NDK for `libatomic.a` and wires it into the `i686-linux-android`
+link step automatically. Ensure your environment exposes `ANDROID_NDK_HOME`, `NDK_HOME`, or an Android SDK directory with the NDK
+installed so the script can discover the library; otherwise you can point the script at a custom installation with `NDK_HOST_TAG`
+and the standard environment variables. When the build script locates the archive it adds an explicit static link search path and
+links `libatomic` so the `dx bundle` run succeeds alongside the 64-bit variants.
 
 [^pixel64]: See Google's "[Moving the Android ecosystem to 64-bit only](https://android-developers.googleblog.com/2022/08/moving-android-ecosystem-to-64-bit-only.html)"
 announcement and contemporaneous Pixel 7 reviews noting the absence of 32-bit app support, such as Ars Technica's

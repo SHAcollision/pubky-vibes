@@ -106,7 +106,7 @@ jobs:
           name: portable-apps-${{ github.run_number }}
           path: |
             dist/*.tar.gz
-            dist/*.apk
+            dist/**/*.apk
 
       - name: Prepare release metadata
         id: release_meta
@@ -125,4 +125,4 @@ jobs:
           generate_release_notes: true
           files: |
             dist/*.tar.gz
-            dist/*.apk
+            dist/**/*.apk

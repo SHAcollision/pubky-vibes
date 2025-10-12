@@ -4,20 +4,21 @@ use dioxus::prelude::*;
 use pubky::Keypair;
 use std::path::PathBuf;
 
+use crate::tabs::KeysTabState;
 use crate::utils::file_dialog::{self, FileDialogResult};
-use crate::utils::logging::{LogEntry, LogLevel, push_log};
+use crate::utils::logging::ActivityLog;
 use crate::utils::recovery::{
     decode_secret_key, load_keypair_from_recovery, normalize_pkarr_path,
     save_keypair_to_recovery_file,
 };
 
-pub fn render_keys_tab(
-    keypair: Signal<Option<Keypair>>,
-    secret_input: Signal<String>,
-    recovery_path: Signal<String>,
-    recovery_passphrase: Signal<String>,
-    logs: Signal<Vec<LogEntry>>,
-) -> Element {
+pub fn render_keys_tab(state: KeysTabState, logs: ActivityLog) -> Element {
+    let KeysTabState {
+        keypair,
+        secret_input,
+        recovery_path,
+        recovery_passphrase,
+    } = state;
     let current_public = {
         let guard = keypair.read();
         guard
@@ -31,26 +32,26 @@ pub fn render_keys_tab(
 
     let mut generate_secret_input = secret_input;
     let mut generate_keypair = keypair;
-    let generate_logs = logs;
+    let generate_logs = logs.clone();
 
     let mut export_secret_input = secret_input;
     let export_keypair = keypair;
-    let export_logs = logs;
+    let export_logs = logs.clone();
 
     let mut import_keypair_signal = keypair;
     let import_secret_signal = secret_input;
-    let import_logs = logs;
+    let import_logs = logs.clone();
 
     let load_path_signal = recovery_path;
     let load_pass_signal = recovery_passphrase;
     let load_keypair_signal = keypair;
     let load_secret_signal = secret_input;
-    let load_logs = logs;
+    let load_logs = logs.clone();
 
     let save_path_signal = recovery_path;
     let save_pass_signal = recovery_passphrase;
     let save_keypair_signal = keypair;
-    let save_logs = logs;
+    let save_logs = logs.clone();
 
     let mut secret_input_binding = secret_input;
     let mut recovery_pass_binding = recovery_passphrase;
@@ -71,7 +72,7 @@ pub fn render_keys_tab(
                             let kp = Keypair::random();
                             generate_secret_input.set(STANDARD.encode(kp.secret_key()));
                             generate_keypair.set(Some(kp.clone()));
-                            push_log(generate_logs, LogLevel::Success, format!("Generated signer {}", kp.public_key()));
+                            generate_logs.success(format!("Generated signer {}", kp.public_key()));
                         },
                         "Generate random key"
                     }
@@ -81,9 +82,9 @@ pub fn render_keys_tab(
                         onclick: move |_| {
                             if let Some(kp) = export_keypair.read().as_ref() {
                                 export_secret_input.set(STANDARD.encode(kp.secret_key()));
-                                push_log(export_logs, LogLevel::Info, "Secret key exported to editor");
+                                export_logs.info("Secret key exported to editor");
                             } else {
-                                push_log(export_logs, LogLevel::Error, "No key loaded");
+                                export_logs.error("No key loaded");
                             }
                         },
                         "Show secret key"
@@ -110,9 +111,9 @@ pub fn render_keys_tab(
                             match decode_secret_key(&secret) {
                                 Ok(kp) => {
                                     import_keypair_signal.set(Some(kp.clone()));
-                                    push_log(import_logs, LogLevel::Success, format!("Loaded key for {}", kp.public_key()));
+                                    import_logs.success(format!("Loaded key for {}", kp.public_key()));
                                 }
-                                Err(err) => push_log(import_logs, LogLevel::Error, format!("Invalid secret key: {err}")),
+                                Err(err) => import_logs.error(format!("Invalid secret key: {err}")),
                             }
                         },
                         "Import secret"
@@ -139,11 +140,9 @@ pub fn render_keys_tab(
                                         FileDialogResult::Selected(path) => {
                                             choose_recovery_path_signal.set(path.display().to_string());
                                         }
-                                        FileDialogResult::Unavailable => push_log(
-                                            choose_logs,
-                                            LogLevel::Info,
-                                            file_dialog::MANUAL_ENTRY_HINT,
-                                        ),
+                                        FileDialogResult::Unavailable => {
+                                            choose_logs.info(file_dialog::MANUAL_ENTRY_HINT)
+                                        }
                                         FileDialogResult::Cancelled => {}
                                     }
                                 },
@@ -177,11 +176,7 @@ pub fn render_keys_tab(
                                         Some(display)
                                     }
                                     FileDialogResult::Unavailable => {
-                                        push_log(
-                                            load_logs,
-                                            LogLevel::Info,
-                                            file_dialog::MANUAL_ENTRY_HINT,
-                                        );
+                                        load_logs.info(file_dialog::MANUAL_ENTRY_HINT);
                                         None
                                     }
                                     FileDialogResult::Cancelled => None,
@@ -193,7 +188,7 @@ pub fn render_keys_tab(
                                 let mut keypair_signal = load_keypair_signal;
                                 let mut secret_signal = load_secret_signal;
                                 let mut path_signal = load_path_signal;
-                                let logs_task = load_logs;
+                                let logs_task = load_logs.clone();
                                 let passphrase_for_task = passphrase.clone();
                                 spawn(async move {
                                     let outcome = (|| -> Result<(Keypair, PathBuf)> {
@@ -206,21 +201,15 @@ pub fn render_keys_tab(
                                             secret_signal.set(STANDARD.encode(kp.secret_key()));
                                             keypair_signal.set(Some(kp.clone()));
                                             path_signal.set(normalized.display().to_string());
-                                            push_log(
-                                                logs_task,
-                                                LogLevel::Success,
-                                                format!(
-                                                    "Decrypted recovery file {} for {}",
-                                                    normalized.display(),
-                                                    kp.public_key()
-                                                ),
-                                            );
+                                            logs_task.success(format!(
+                                                "Decrypted recovery file {} for {}",
+                                                normalized.display(),
+                                                kp.public_key()
+                                            ));
                                         }
-                                        Err(err) => push_log(
-                                            logs_task,
-                                            LogLevel::Error,
-                                            format!("Failed to load recovery file: {err}"),
-                                        ),
+                                        Err(err) => logs_task.error(format!(
+                                            "Failed to load recovery file: {err}"
+                                        )),
                                     }
                                 });
                             }
@@ -242,11 +231,7 @@ pub fn render_keys_tab(
                                             Some(display)
                                         }
                                         FileDialogResult::Unavailable => {
-                                            push_log(
-                                                save_logs,
-                                                LogLevel::Info,
-                                                file_dialog::MANUAL_ENTRY_HINT,
-                                            );
+                                            save_logs.info(file_dialog::MANUAL_ENTRY_HINT);
                                             None
                                         }
                                         FileDialogResult::Cancelled => None,
@@ -257,27 +242,24 @@ pub fn render_keys_tab(
                                 if let Some(selected_path) = chosen_path {
                                     let passphrase = save_pass_signal.read().clone();
                                     let mut path_signal = save_path_signal;
-                                    let logs_task = save_logs;
+                                    let logs_task = save_logs.clone();
                                     spawn(async move {
                                         match save_keypair_to_recovery_file(&kp, &selected_path, &passphrase) {
                                             Ok(path) => {
                                                 path_signal.set(path.display().to_string());
-                                                push_log(
-                                                    logs_task,
-                                                    LogLevel::Success,
-                                                    format!("Recovery file saved to {}", path.display()),
-                                                );
+                                                logs_task.success(format!(
+                                                    "Recovery file saved to {}",
+                                                    path.display()
+                                                ));
                                             }
-                                            Err(err) => push_log(
-                                                logs_task,
-                                                LogLevel::Error,
-                                                format!("Failed to save recovery file: {err}"),
-                                            ),
+                                            Err(err) => logs_task.error(format!(
+                                                "Failed to save recovery file: {err}"
+                                            )),
                                         }
                                     });
                                 }
                             } else {
-                                push_log(save_logs, LogLevel::Error, "Generate or import a key first");
+                                save_logs.error("Generate or import a key first");
                             }
                         },
                         "Save recovery file"

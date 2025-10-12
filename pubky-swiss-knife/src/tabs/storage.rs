@@ -1,51 +1,54 @@
 use dioxus::prelude::*;
-use pubky::PubkySession;
 
+use crate::tabs::StorageTabState;
 use crate::utils::http::format_response;
-use crate::utils::logging::{LogEntry, LogLevel, push_log};
-use crate::utils::pubky::PubkyFacadeState;
+use crate::utils::logging::ActivityLog;
+use crate::utils::pubky::PubkyFacadeHandle;
 
 #[allow(clippy::too_many_arguments, clippy::clone_on_copy)]
 pub fn render_storage_tab(
-    pubky_state: Signal<PubkyFacadeState>,
-    session: Signal<Option<PubkySession>>,
-    storage_path: Signal<String>,
-    storage_body: Signal<String>,
-    storage_response: Signal<String>,
-    public_resource: Signal<String>,
-    public_response: Signal<String>,
-    logs: Signal<Vec<LogEntry>>,
+    pubky: PubkyFacadeHandle,
+    state: StorageTabState,
+    logs: ActivityLog,
 ) -> Element {
-    let path_value = { storage_path.read().clone() };
-    let body_value = { storage_body.read().clone() };
-    let session_response = { storage_response.read().clone() };
+    let StorageTabState {
+        session,
+        path,
+        body,
+        response,
+        public_resource,
+        public_response,
+    } = state;
+
+    let path_value = { path.read().clone() };
+    let body_value = { body.read().clone() };
+    let session_response = { response.read().clone() };
     let public_value = { public_resource.read().clone() };
     let public_resp = { public_response.read().clone() };
 
-    let mut storage_path_binding = storage_path.clone();
-    let mut storage_body_binding = storage_body.clone();
+    let mut storage_path_binding = path.clone();
+    let mut storage_body_binding = body.clone();
 
     let storage_session_get = session.clone();
-    let storage_path_get = storage_path.clone();
-    let storage_response_get = storage_response.clone();
+    let storage_path_get = path.clone();
+    let storage_response_get = response.clone();
     let storage_logs_get = logs.clone();
 
     let storage_session_put = session.clone();
-    let storage_path_put = storage_path.clone();
-    let storage_body_put = storage_body.clone();
-    let storage_response_put = storage_response.clone();
+    let storage_path_put = path.clone();
+    let storage_body_put = body.clone();
+    let storage_response_put = response.clone();
     let storage_logs_put = logs.clone();
 
     let storage_session_delete = session.clone();
-    let storage_path_delete = storage_path.clone();
-    let storage_response_delete = storage_response.clone();
+    let storage_path_delete = path.clone();
+    let storage_response_delete = response.clone();
     let storage_logs_delete = logs.clone();
 
     let mut public_resource_binding = public_resource.clone();
     let public_resource_signal = public_resource.clone();
     let public_response_signal = public_response.clone();
     let public_logs = logs.clone();
-    let public_pubky_state = pubky_state.clone();
 
     rsx! {
         div { class: "tab-body",
@@ -79,7 +82,7 @@ pub fn render_storage_tab(
                             if let Some(session) = storage_session_get.read().as_ref().cloned() {
                                 let path = storage_path_get.read().clone();
                                 if path.trim().is_empty() {
-                                    push_log(storage_logs_get.clone(), LogLevel::Error, "Provide a path to GET");
+                                    storage_logs_get.error("Provide a path to GET");
                                     return;
                                 }
                                 let mut response_signal = storage_response_get.clone();
@@ -92,12 +95,12 @@ pub fn render_storage_tab(
                                         Ok::<_, anyhow::Error>(format!("Fetched {path}"))
                                     };
                                     match result.await {
-                                        Ok(msg) => push_log(logs_task, LogLevel::Success, msg),
-                                        Err(err) => push_log(logs_task, LogLevel::Error, format!("GET failed: {err}")),
+                                        Ok(msg) => logs_task.success(msg),
+                                        Err(err) => logs_task.error(format!("GET failed: {err}")),
                                     }
                                 });
                             } else {
-                                push_log(storage_logs_get, LogLevel::Error, "No active session");
+                                storage_logs_get.error("No active session");
                             }
                         },
                         "GET",
@@ -109,7 +112,7 @@ pub fn render_storage_tab(
                             if let Some(session) = storage_session_put.read().as_ref().cloned() {
                                 let path = storage_path_put.read().clone();
                                 if path.trim().is_empty() {
-                                    push_log(storage_logs_put.clone(), LogLevel::Error, "Provide a path to PUT");
+                                    storage_logs_put.error("Provide a path to PUT");
                                     return;
                                 }
                                 let body = storage_body_put.read().clone();
@@ -123,12 +126,12 @@ pub fn render_storage_tab(
                                         Ok::<_, anyhow::Error>(format!("Stored {path}"))
                                     };
                                     match result.await {
-                                        Ok(msg) => push_log(logs_task, LogLevel::Success, msg),
-                                        Err(err) => push_log(logs_task, LogLevel::Error, format!("PUT failed: {err}")),
+                                        Ok(msg) => logs_task.success(msg),
+                                        Err(err) => logs_task.error(format!("PUT failed: {err}")),
                                     }
                                 });
                             } else {
-                                push_log(storage_logs_put, LogLevel::Error, "No active session");
+                                storage_logs_put.error("No active session");
                             }
                         },
                         "PUT",
@@ -140,7 +143,7 @@ pub fn render_storage_tab(
                             if let Some(session) = storage_session_delete.read().as_ref().cloned() {
                                 let path = storage_path_delete.read().clone();
                                 if path.trim().is_empty() {
-                                    push_log(storage_logs_delete.clone(), LogLevel::Error, "Provide a path to DELETE");
+                                    storage_logs_delete.error("Provide a path to DELETE");
                                     return;
                                 }
                                 let mut response_signal = storage_response_delete.clone();
@@ -153,12 +156,12 @@ pub fn render_storage_tab(
                                         Ok::<_, anyhow::Error>(format!("Deleted {path}"))
                                     };
                                     match result.await {
-                                        Ok(msg) => push_log(logs_task, LogLevel::Success, msg),
-                                        Err(err) => push_log(logs_task, LogLevel::Error, format!("DELETE failed: {err}")),
+                                        Ok(msg) => logs_task.success(msg),
+                                        Err(err) => logs_task.error(format!("DELETE failed: {err}")),
                                     }
                                 });
                             } else {
-                                push_log(storage_logs_delete, LogLevel::Error, "No active session");
+                                storage_logs_delete.error("No active session");
                             }
                         },
                         "DELETE",
@@ -188,21 +191,14 @@ pub fn render_storage_tab(
                         onclick: move |_| {
                             let resource = public_resource_signal.read().clone();
                             if resource.trim().is_empty() {
-                                push_log(public_logs.clone(), LogLevel::Error, "Provide a resource to fetch");
+                                public_logs.error("Provide a resource to fetch");
                                 return;
                             }
-                            let mut response_signal = public_response_signal.clone();
-                            let logs_task = public_logs.clone();
-                            let maybe_pubky = { public_pubky_state.read().facade() };
-                            let Some(pubky) = maybe_pubky else {
-                                push_log(
-                                    public_logs.clone(),
-                                    LogLevel::Info,
-                                    "Pubky facade is still starting up. Try again shortly.",
-                                );
+                            let Some(pubky) = pubky.ready_or_log(&public_logs) else {
                                 return;
                             };
-                            let pubky = pubky.clone();
+                            let mut response_signal = public_response_signal.clone();
+                            let logs_task = public_logs.clone();
                             spawn(async move {
                                 let result = async move {
                                     let resp = pubky.public_storage().get(resource.clone()).await?;
@@ -211,8 +207,8 @@ pub fn render_storage_tab(
                                     Ok::<_, anyhow::Error>(format!("Fetched public resource {resource}"))
                                 };
                                 match result.await {
-                                    Ok(msg) => push_log(logs_task, LogLevel::Success, msg),
-                                    Err(err) => push_log(logs_task, LogLevel::Error, format!("Public GET failed: {err}")),
+                                    Ok(msg) => logs_task.success(msg),
+                                    Err(err) => logs_task.error(format!("Public GET failed: {err}")),
                                 }
                             });
                         },

@@ -1,65 +1,70 @@
 use anyhow::{Context, anyhow};
 use dioxus::prelude::*;
-use pubky::{Capabilities, Keypair, PubkyAuthFlow, PubkySession};
+use pubky::{Capabilities, PubkyAuthFlow};
 use url::Url;
 
-use crate::tabs::format_session_info;
-use crate::utils::logging::{LogEntry, LogLevel, push_log};
-use crate::utils::pubky::PubkyFacadeState;
+use crate::tabs::{AuthTabState, format_session_info};
+use crate::utils::logging::ActivityLog;
+use crate::utils::pubky::PubkyFacadeHandle;
 use crate::utils::qr::generate_qr_data_url;
 
 #[allow(clippy::too_many_arguments, clippy::clone_on_copy)]
 pub fn render_auth_tab(
-    pubky_state: Signal<PubkyFacadeState>,
-    keypair: Signal<Option<Keypair>>,
-    session: Signal<Option<PubkySession>>,
-    session_details: Signal<String>,
-    auth_caps_input: Signal<String>,
-    auth_relay_input: Signal<String>,
-    auth_url_output: Signal<String>,
-    auth_qr_data: Signal<Option<String>>,
-    auth_status: Signal<String>,
-    auth_flow: Signal<Option<PubkyAuthFlow>>,
-    auth_request_input: Signal<String>,
-    logs: Signal<Vec<LogEntry>>,
+    pubky: PubkyFacadeHandle,
+    state: AuthTabState,
+    logs: ActivityLog,
 ) -> Element {
-    let caps_value = { auth_caps_input.read().clone() };
-    let relay_value = { auth_relay_input.read().clone() };
-    let url_value = { auth_url_output.read().clone() };
-    let status_value = { auth_status.read().clone() };
-    let qr_value = { auth_qr_data.read().clone() };
-    let request_value = { auth_request_input.read().clone() };
+    let AuthTabState {
+        keypair,
+        session,
+        details,
+        capabilities,
+        relay,
+        url_output,
+        qr_data,
+        status,
+        flow,
+        request_body,
+    } = state;
 
-    let mut caps_binding = auth_caps_input.clone();
-    let mut relay_binding = auth_relay_input.clone();
-    let mut request_binding = auth_request_input.clone();
+    let caps_value = { capabilities.read().clone() };
+    let relay_value = { relay.read().clone() };
+    let url_value = { url_output.read().clone() };
+    let status_value = { status.read().clone() };
+    let qr_value = { qr_data.read().clone() };
+    let request_value = { request_body.read().clone() };
 
-    let start_pubky_state = pubky_state.clone();
-    let start_caps_signal = auth_caps_input.clone();
-    let start_relay_signal = auth_relay_input.clone();
-    let start_flow_signal = auth_flow.clone();
-    let start_url_signal = auth_url_output.clone();
-    let start_qr_signal = auth_qr_data.clone();
-    let start_status_signal = auth_status.clone();
+    let mut caps_binding = capabilities.clone();
+    let mut relay_binding = relay.clone();
+    let mut request_binding = request_body.clone();
+
+    let start_caps_signal = capabilities.clone();
+    let start_relay_signal = relay.clone();
+    let start_flow_signal = flow.clone();
+    let start_url_signal = url_output.clone();
+    let start_qr_signal = qr_data.clone();
+    let start_status_signal = status.clone();
     let start_logs = logs.clone();
 
-    let mut await_flow_signal = auth_flow.clone();
-    let mut await_status_signal = auth_status.clone();
-    let await_url_signal = auth_url_output.clone();
-    let await_qr_signal = auth_qr_data.clone();
+    let mut await_flow_signal = flow.clone();
+    let mut await_status_signal = status.clone();
+    let await_url_signal = url_output.clone();
+    let await_qr_signal = qr_data.clone();
     let await_session_signal = session.clone();
-    let await_details_signal = session_details.clone();
+    let await_details_signal = details.clone();
     let await_logs = logs.clone();
 
-    let mut cancel_flow_signal = auth_flow.clone();
-    let mut cancel_status_signal = auth_status.clone();
-    let mut cancel_url_signal = auth_url_output.clone();
-    let mut cancel_qr_signal = auth_qr_data.clone();
+    let mut cancel_flow_signal = flow.clone();
+    let mut cancel_status_signal = status.clone();
+    let mut cancel_url_signal = url_output.clone();
+    let mut cancel_qr_signal = qr_data.clone();
     let cancel_logs = logs.clone();
 
-    let approve_pubky_state = pubky_state.clone();
+    let start_pubky = pubky.clone();
+    let approve_pubky = pubky.clone();
+
     let approve_keypair = keypair.clone();
-    let approve_request_signal = auth_request_input.clone();
+    let approve_request_signal = request_body.clone();
     let approve_logs = logs.clone();
 
     rsx! {
@@ -94,20 +99,13 @@ pub fn render_auth_tab(
                         onclick: move |_| {
                         let caps_text = start_caps_signal.read().clone();
                         if caps_text.trim().is_empty() {
-                            push_log(start_logs.clone(), LogLevel::Error, "Provide capabilities for the request");
+                            start_logs.error("Provide capabilities for the request");
                             return;
                         }
                         let relay_text = start_relay_signal.read().clone();
-                        let maybe_pubky = { start_pubky_state.read().facade() };
-                        let Some(pubky) = maybe_pubky else {
-                            push_log(
-                                start_logs.clone(),
-                                LogLevel::Info,
-                                "Pubky facade is still starting up. Try again shortly.",
-                            );
+                        let Some(pubky) = start_pubky.ready_or_log(&start_logs) else {
                             return;
                         };
-                        let pubky = pubky.clone();
                         let mut flow_slot = start_flow_signal.clone();
                         let mut url_slot = start_url_signal.clone();
                         let mut qr_slot = start_qr_signal.clone();
@@ -136,13 +134,13 @@ pub fn render_auth_tab(
                                 Ok::<_, anyhow::Error>(format!("Auth flow ready: {auth_url}"))
                             };
                             match result.await {
-                                Ok(msg) => push_log(logs_task, LogLevel::Success, msg),
+                                Ok(msg) => logs_task.success(msg),
                                 Err(err) => {
                                     flow_slot.set(None);
                                     url_slot.set(String::new());
                                     qr_slot.set(None);
                                     status_slot.set(String::new());
-                                    push_log(logs_task, LogLevel::Error, format!("Failed to start auth flow: {err}"));
+                                    logs_task.error(format!("Failed to start auth flow: {err}"));
                                 }
                             }
                         });
@@ -174,24 +172,19 @@ pub fn render_auth_tab(
                                         status_slot.set(format!("Approved by {}", info.public_key()));
                                         url_slot.set(String::new());
                                         qr_slot.set(None);
-                                        push_log(
-                                            logs_task,
-                                            LogLevel::Success,
-                                            format!("Auth flow approved by {}", info.public_key()),
-                                        );
+                                        logs_task.success(format!(
+                                            "Auth flow approved by {}",
+                                            info.public_key()
+                                        ));
                                     }
                                     Err(err) => {
                                         status_slot.set(String::from("Auth approval failed"));
-                                        push_log(
-                                            logs_task,
-                                            LogLevel::Error,
-                                            format!("Auth approval failed: {err}"),
-                                        );
+                                        logs_task.error(format!("Auth approval failed: {err}"));
                                     }
                                 }
                             });
                         } else {
-                            push_log(await_logs, LogLevel::Error, "Start an auth flow first");
+                            await_logs.error("Start an auth flow first");
                         }
                         },
                     "Await approval",
@@ -208,9 +201,9 @@ pub fn render_auth_tab(
                             cancel_url_signal.set(String::new());
                             cancel_qr_signal.set(None);
                             if had_flow {
-                                push_log(cancel_logs.clone(), LogLevel::Info, "Auth flow cancelled");
+                                cancel_logs.info("Auth flow cancelled");
                             } else {
-                                push_log(cancel_logs, LogLevel::Error, "No auth flow to cancel");
+                                cancel_logs.error("No auth flow to cancel");
                             }
                         },
                     "Cancel",
@@ -256,22 +249,15 @@ pub fn render_auth_tab(
                         onclick: move |_| {
                             let url = approve_request_signal.read().clone();
                             if url.trim().is_empty() {
-                                push_log(approve_logs.clone(), LogLevel::Error, "Paste a pubkyauth:// URL to approve");
+                                approve_logs.error("Paste a pubkyauth:// URL to approve");
                                 return;
                             }
-                            let maybe_pubky = { approve_pubky_state.read().facade() };
-                            let Some(pubky) = maybe_pubky else {
-                                push_log(
-                                    approve_logs.clone(),
-                                    LogLevel::Info,
-                                    "Pubky facade is still starting up. Try again shortly.",
-                                );
+                            let Some(pubky) = approve_pubky.ready_or_log(&approve_logs) else {
                                 return;
                             };
                             if let Some(kp) = approve_keypair.read().as_ref().cloned() {
                                 let url_string = url.trim().to_string();
                                 let logs_task = approve_logs.clone();
-                                let pubky = pubky.clone();
                                 spawn(async move {
                                     let result = async move {
                                         let signer = pubky.signer(kp.clone());
@@ -282,16 +268,14 @@ pub fn render_auth_tab(
                                         ))
                                     };
                                     match result.await {
-                                        Ok(msg) => push_log(logs_task, LogLevel::Success, msg),
-                                        Err(err) => push_log(
-                                            logs_task,
-                                            LogLevel::Error,
-                                            format!("Failed to approve auth request: {err}"),
-                                        ),
+                                        Ok(msg) => logs_task.success(msg),
+                                        Err(err) => logs_task.error(format!(
+                                            "Failed to approve auth request: {err}"
+                                        )),
                                     }
                                 });
                             } else {
-                                push_log(approve_logs, LogLevel::Error, "Load or generate a keypair first");
+                                approve_logs.error("Load or generate a keypair first");
                             }
                         },
                         "Approve request",

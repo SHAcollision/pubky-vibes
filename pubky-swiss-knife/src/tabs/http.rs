@@ -6,35 +6,40 @@ use reqwest::header::HeaderName;
 use url::Url;
 
 use crate::app::NetworkMode;
+use crate::tabs::HttpTabState;
 use crate::utils::http::format_response;
-use crate::utils::logging::{LogEntry, LogLevel, push_log};
+use crate::utils::logging::ActivityLog;
 
 pub fn render_http_tab(
     network_mode: Signal<NetworkMode>,
-    http_method: Signal<String>,
-    http_url: Signal<String>,
-    http_headers: Signal<String>,
-    http_body: Signal<String>,
-    http_response: Signal<String>,
-    logs: Signal<Vec<LogEntry>>,
+    state: HttpTabState,
+    logs: ActivityLog,
 ) -> Element {
-    let method_value = { http_method.read().clone() };
-    let url_value = { http_url.read().clone() };
-    let headers_value = { http_headers.read().clone() };
-    let body_value = { http_body.read().clone() };
-    let response_value = { http_response.read().clone() };
+    let HttpTabState {
+        method,
+        url,
+        headers,
+        body,
+        response,
+    } = state;
 
-    let mut method_binding = http_method;
-    let mut url_binding = http_url;
-    let mut headers_binding = http_headers;
-    let mut body_binding = http_body;
+    let method_value = { method.read().clone() };
+    let url_value = { url.read().clone() };
+    let headers_value = { headers.read().clone() };
+    let body_value = { body.read().clone() };
+    let response_value = { response.read().clone() };
 
-    let request_method_signal = http_method;
-    let request_url_signal = http_url;
-    let request_headers_signal = http_headers;
-    let request_body_signal = http_body;
-    let request_response_signal = http_response;
-    let request_logs = logs;
+    let mut method_binding = method;
+    let mut url_binding = url;
+    let mut headers_binding = headers;
+    let mut body_binding = body;
+
+    let request_method_signal = method;
+    let request_url_signal = url;
+    let request_headers_signal = headers;
+    let request_body_signal = body;
+    let request_response_signal = response;
+    let request_logs = logs.clone();
     let request_network = network_mode;
 
     rsx! {
@@ -92,14 +97,14 @@ pub fn render_http_tab(
                         onclick: move |_| {
                             let method = request_method_signal.read().clone();
                             let url = request_url_signal.read().clone();
-                        if url.trim().is_empty() {
-                            push_log(request_logs, LogLevel::Error, "Provide a URL");
-                            return;
-                        }
+                            if url.trim().is_empty() {
+                                request_logs.error("Provide a URL");
+                                return;
+                            }
                             let headers = request_headers_signal.read().clone();
                             let body = request_body_signal.read().clone();
-                        let mut response_signal = request_response_signal;
-                        let logs_task = request_logs;
+                            let mut response_signal = request_response_signal;
+                            let logs_task = request_logs.clone();
                             let network = *request_network.read();
                             spawn(async move {
                                 let result = async move {
@@ -131,8 +136,8 @@ pub fn render_http_tab(
                                     Ok::<_, anyhow::Error>(format!("{method_parsed} {url_display}"))
                                 };
                                 match result.await {
-                                    Ok(msg) => push_log(logs_task, LogLevel::Success, format!("Request completed: {msg}")),
-                                    Err(err) => push_log(logs_task, LogLevel::Error, format!("Request failed: {err}")),
+                                    Ok(msg) => logs_task.success(format!("Request completed: {msg}")),
+                                    Err(err) => logs_task.error(format!("Request failed: {err}")),
                                 }
                             });
                         },

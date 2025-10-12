@@ -61,11 +61,12 @@ jobs:
       - name: Locate Android project
         id: locate-android
         run: |
-          ANDROID_DIR=$(find pubky-swiss-knife/target/dx -maxdepth 4 -type d -name android -print -quit)
-          if [ -z "$ANDROID_DIR" ]; then
+          GRADLEW_PATH=$(find pubky-swiss-knife/target/dx -maxdepth 6 -type f -name gradlew -print -quit)
+          if [ -z "$GRADLEW_PATH" ]; then
             echo "Unable to find generated Android project" >&2
             exit 1
           fi
+          ANDROID_DIR=$(dirname "$GRADLEW_PATH")
           echo "dir=$ANDROID_DIR" >> "$GITHUB_OUTPUT"
 
       - name: Assemble release APK

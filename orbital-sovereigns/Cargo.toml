@@ -1,0 +1,44 @@
+[package]
+name = "orbital-sovereigns"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "orbital_sovereigns"
+path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "orbital-sovereigns"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+base64 = "0.22"
+futures = "0.3"
+indexmap = { version = "2", features = ["serde"] }
+mimalloc = "0.1"
+parking_lot = "0.12"
+pubky = "0.6.0-rc.6"
+rand = { version = "0.8", features = ["std", "small_rng", "serde1"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_with = "3"
+hex = "0.4"
+sha2 = "0.10"
+chacha20poly1305 = { version = "0.10", features = ["std"] }
+thiserror = "1"
+time = { version = "0.3", features = ["formatting", "macros", "serde"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "sync", "time"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+uuid = { version = "1", features = ["v4", "serde", "fast-rng"] }
+
+[target.'cfg(not(target_os = "android"))'.dependencies]
+dioxus = { version = "0.7.0-rc.1", features = ["desktop", "router"] }
+dioxus-desktop = "0.7.0-rc.1"
+
+[target.'cfg(target_os = "android")'.dependencies]
+dioxus = { version = "0.7.0-rc.1", features = ["mobile", "router"] }
+
+[dev-dependencies]
+pretty_assertions = "1"

@@ -280,6 +280,9 @@ select {
     font-size: 0.95rem;
     transition: border 0.2s ease, box-shadow 0.2s ease;
     width: 100%;
+    -webkit-user-select: text;
+    user-select: text;
+    -webkit-touch-callout: default;
 }
 
 input::placeholder,
@@ -300,6 +303,10 @@ textarea {
     min-height: 5.75rem;
     max-height: 9rem;
     resize: none;
+}
+
+textarea[readonly] {
+    cursor: text;
 }
 
 textarea.tall {
@@ -351,16 +358,36 @@ button.secondary {
     flex-wrap: wrap;
 }
 
+.qr-visual {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+}
+
 .qr-container img {
     background: #f8fafc;
     padding: 0.75rem;
     border-radius: 1.1rem;
     box-shadow: 0 12px 30px rgba(15, 23, 42, 0.4);
     max-width: 220px;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.2s ease;
+}
+
+.qr-container img:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.5);
 }
 
 .qr-container textarea {
     width: min(420px, 100%);
+}
+
+.qr-launch {
+    width: 100%;
+    max-width: 220px;
+    justify-content: center;
 }
 
 .auth-status {

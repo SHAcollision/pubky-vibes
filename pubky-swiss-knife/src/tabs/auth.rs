@@ -1,12 +1,28 @@
 use anyhow::{Context, anyhow};
+use dioxus::events::MouseData;
 use dioxus::prelude::*;
 use pubky::{Capabilities, PubkyAuthFlow};
 use url::Url;
 
 use crate::tabs::{AuthTabState, format_session_info};
+use crate::utils::links::open_pubkyauth_link;
 use crate::utils::logging::ActivityLog;
 use crate::utils::pubky::PubkyFacadeHandle;
 use crate::utils::qr::generate_qr_data_url;
+
+fn open_link_handler(logs: ActivityLog, link: String) -> impl FnMut(Event<MouseData>) + 'static {
+    move |_| {
+        let trimmed = link.trim();
+        if trimmed.is_empty() {
+            logs.error("No pubkyauth link available to open");
+            return;
+        }
+        match open_pubkyauth_link(trimmed) {
+            Ok(()) => logs.success("Opened pubkyauth link locally"),
+            Err(err) => logs.error(format!("Failed to open pubkyauth link: {err}")),
+        }
+    }
+}
 
 #[allow(clippy::too_many_arguments, clippy::clone_on_copy)]
 pub fn render_auth_tab(
@@ -214,8 +230,22 @@ pub fn render_auth_tab(
                 }
                 if qr_value.is_some() || !url_value.trim().is_empty() {
                     div { class: "qr-container",
-                        if let Some(data_url) = qr_value {
-                            img { src: data_url, alt: "pubkyauth QR code" }
+                        if let Some(data_url) = qr_value.clone() {
+                            div { class: "qr-visual",
+                                img {
+                                    src: data_url,
+                                    alt: "pubkyauth QR code",
+                                    title: "Open this pubkyauth:// link locally",
+                                    onclick: open_link_handler(logs.clone(), url_value.clone()),
+                                }
+                                button {
+                                    class: "action secondary qr-launch",
+                                    r#type: "button",
+                                    title: "Open this pubkyauth:// link locally",
+                                    onclick: open_link_handler(logs.clone(), url_value.clone()),
+                                    "Open link locally",
+                                }
+                            }
                         }
                         textarea {
                             class: "tall",

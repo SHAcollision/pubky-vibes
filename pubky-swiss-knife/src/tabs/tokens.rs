@@ -4,6 +4,7 @@ use pubky::{AuthToken, Capabilities};
 
 use crate::tabs::TokensTabState;
 use crate::utils::logging::ActivityLog;
+use crate::utils::mobile::{IS_ANDROID, touch_copy_option, touch_tooltip};
 
 pub fn render_tokens_tab(state: TokensTabState, logs: ActivityLog) -> Element {
     let TokensTabState {
@@ -14,6 +15,16 @@ pub fn render_tokens_tab(state: TokensTabState, logs: ActivityLog) -> Element {
 
     let caps_value = { capabilities.read().clone() };
     let token_value = { output.read().clone() };
+    let token_copy_value = if token_value.trim().is_empty() {
+        None
+    } else {
+        Some(token_value.clone())
+    };
+    let token_copy_success = if IS_ANDROID {
+        Some(String::from("Copied auth token to clipboard"))
+    } else {
+        None
+    };
 
     let mut token_caps_binding = capabilities;
 
@@ -34,6 +45,9 @@ pub fn render_tokens_tab(state: TokensTabState, logs: ActivityLog) -> Element {
                             value: caps_value,
                             oninput: move |evt| token_caps_binding.set(evt.value()),
                             title: "Enter the capabilities you want to grant, separated by commas",
+                            data-touch-tooltip: touch_tooltip(
+                                "Enter the capabilities you want to grant, separated by commas",
+                            ),
                             placeholder: "Comma-separated scopes"
                         }
                     }
@@ -42,6 +56,9 @@ pub fn render_tokens_tab(state: TokensTabState, logs: ActivityLog) -> Element {
                     button {
                         class: "action",
                         title: "Sign the listed scopes with the currently loaded key",
+                        data-touch-tooltip: touch_tooltip(
+                            "Sign the listed scopes with the currently loaded key",
+                        ),
                         onclick: move |_| {
                             let caps = sign_caps.read().clone();
                             if let Some(kp) = sign_keypair.read().as_ref() {
@@ -64,7 +81,15 @@ pub fn render_tokens_tab(state: TokensTabState, logs: ActivityLog) -> Element {
                     }
                 }
                 if !token_value.is_empty() {
-                    div { class: "outputs", {token_value} }
+                    div {
+                        class: "outputs copyable",
+                        data-touch-tooltip: touch_tooltip(
+                            "Tap to copy the signed token",
+                        ),
+                        data-touch-copy: touch_copy_option(token_copy_value.clone()),
+                        data-copy-success: token_copy_success.clone(),
+                        {token_value}
+                    }
                 }
             }
         }

@@ -7,6 +7,7 @@ use std::path::PathBuf;
 use crate::tabs::KeysTabState;
 use crate::utils::file_dialog::{self, FileDialogResult};
 use crate::utils::logging::ActivityLog;
+use crate::utils::mobile::{IS_ANDROID, touch_copy, touch_copy_option, touch_tooltip};
 use crate::utils::recovery::{
     decode_secret_key, load_keypair_from_recovery, normalize_pkarr_path,
     save_keypair_to_recovery_file,
@@ -25,6 +26,16 @@ pub fn render_keys_tab(state: KeysTabState, logs: ActivityLog) -> Element {
             .as_ref()
             .map(|kp| kp.public_key().to_string())
             .unwrap_or_else(|| "–".to_string())
+    };
+    let public_copy_value = if current_public != "–" {
+        Some(current_public.clone())
+    } else {
+        None
+    };
+    let public_copy_success = if IS_ANDROID {
+        Some(String::from("Copied public key to clipboard"))
+    } else {
+        None
     };
     let secret_value = { secret_input.read().clone() };
     let recovery_path_value = { recovery_path.read().clone() };
@@ -63,11 +74,32 @@ pub fn render_keys_tab(state: KeysTabState, logs: ActivityLog) -> Element {
         div { class: "tab-body tight",
             section { class: "card",
                 h2 { "Key material" }
-                p { class: "helper-text", "Generate or import keys. Current public key: {current_public}." }
+                p { class: "helper-text",
+                    "Generate or import keys."
+                    if let Some(value) = public_copy_value.clone() {
+                        span {
+                            class: "copyable-inline",
+                            title: "Tap to copy the current public key",
+                            data-touch-tooltip: touch_tooltip(
+                                "Tap to copy the current public key",
+                            ),
+                            data-touch-copy: touch_copy(value.clone()),
+                            data-copy-success: public_copy_success.clone(),
+                            " Current public key: "
+                            span { class: "mono", {value} }
+                        }
+                        "."
+                    } else {
+                        format_args!(" Current public key: {}.", current_public)
+                    }
+                }
                 div { class: "small-buttons",
                     button {
                         class: "action",
                         title: "Generate a brand-new Ed25519 signing key and load it here",
+                        data-touch-tooltip: touch_tooltip(
+                            "Generate a brand-new Ed25519 signing key and load it here",
+                        ),
                         onclick: move |_| {
                             let kp = Keypair::random();
                             generate_secret_input.set(STANDARD.encode(kp.secret_key()));
@@ -79,6 +111,9 @@ pub fn render_keys_tab(state: KeysTabState, logs: ActivityLog) -> Element {
                     button {
                         class: "action secondary",
                         title: "Copy the active signer secret (as base64) into the editor without touching disk",
+                        data-touch-tooltip: touch_tooltip(
+                            "Copy the active signer secret (as base64) into the editor without touching disk",
+                        ),
                         onclick: move |_| {
                             if let Some(kp) = export_keypair.read().as_ref() {
                                 export_secret_input.set(STANDARD.encode(kp.secret_key()));
@@ -98,6 +133,9 @@ pub fn render_keys_tab(state: KeysTabState, logs: ActivityLog) -> Element {
                             value: secret_value,
                             oninput: move |evt| secret_input_binding.set(evt.value()),
                             title: "Paste or edit the base64-encoded 32-byte secret for your signing key",
+                            data-touch-tooltip: touch_tooltip(
+                                "Paste or edit the base64-encoded 32-byte secret for your signing key",
+                            ),
                             placeholder: "Base64 encoded 32-byte secret key",
                         }
                     }
@@ -106,6 +144,9 @@ pub fn render_keys_tab(state: KeysTabState, logs: ActivityLog) -> Element {
                     button {
                         class: "action",
                         title: "Activate the signer using the secret from the editor",
+                        data-touch-tooltip: touch_tooltip(
+                            "Activate the signer using the secret from the editor",
+                        ),
                         onclick: move |_| {
                             let secret = import_secret_signal.read().clone();
                             match decode_secret_key(&secret) {
@@ -135,6 +176,9 @@ pub fn render_keys_tab(state: KeysTabState, logs: ActivityLog) -> Element {
                             button {
                                 class: "action secondary",
                                 title: "Browse for an existing PKARR or Pubky recovery file to import",
+                                data-touch-tooltip: touch_tooltip(
+                                    "Browse for an existing PKARR or Pubky recovery file to import",
+                                ),
                                 onclick: move |_| {
                                     match file_dialog::pick_file() {
                                         FileDialogResult::Selected(path) => {
@@ -157,6 +201,9 @@ pub fn render_keys_tab(state: KeysTabState, logs: ActivityLog) -> Element {
                             value: recovery_pass_value.clone(),
                             oninput: move |evt| recovery_pass_binding.set(evt.value()),
                             title: "Passphrase used to decrypt PKARR recovery bundles",
+                            data-touch-tooltip: touch_tooltip(
+                                "Passphrase used to decrypt PKARR recovery bundles",
+                            ),
                         }
                     }
                 }
@@ -164,6 +211,9 @@ pub fn render_keys_tab(state: KeysTabState, logs: ActivityLog) -> Element {
                     button {
                         class: "action",
                         title: "Open and decrypt a PKARR recovery file and load its key into the tool",
+                        data-touch-tooltip: touch_tooltip(
+                            "Open and decrypt a PKARR recovery file and load its key into the tool",
+                        ),
                         onclick: move |_| {
                             let raw_path = load_path_signal.read().clone();
                             let passphrase = load_pass_signal.read().clone();
@@ -219,6 +269,9 @@ pub fn render_keys_tab(state: KeysTabState, logs: ActivityLog) -> Element {
                     button {
                         class: "action secondary",
                         title: "Encrypt the active keypair into a PKARR-compatible bundle and save it",
+                        data-touch-tooltip: touch_tooltip(
+                            "Encrypt the active keypair into a PKARR-compatible bundle and save it",
+                        ),
                         onclick: move |_| {
                             if let Some(kp) = save_keypair_signal.read().as_ref().cloned() {
                                 let raw_path = save_path_signal.read().clone();

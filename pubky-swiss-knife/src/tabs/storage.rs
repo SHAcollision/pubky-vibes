@@ -3,6 +3,7 @@ use dioxus::prelude::*;
 use crate::tabs::StorageTabState;
 use crate::utils::http::format_response;
 use crate::utils::logging::ActivityLog;
+use crate::utils::mobile::{IS_ANDROID, touch_copy_option, touch_tooltip};
 use crate::utils::pubky::PubkyFacadeHandle;
 
 #[allow(clippy::too_many_arguments, clippy::clone_on_copy)]
@@ -25,6 +26,26 @@ pub fn render_storage_tab(
     let session_response = { response.read().clone() };
     let public_value = { public_resource.read().clone() };
     let public_resp = { public_response.read().clone() };
+    let session_copy_value = if session_response.trim().is_empty() {
+        None
+    } else {
+        Some(session_response.clone())
+    };
+    let session_copy_success = if IS_ANDROID {
+        Some(String::from("Copied storage response to clipboard"))
+    } else {
+        None
+    };
+    let public_copy_value = if public_resp.trim().is_empty() {
+        None
+    } else {
+        Some(public_resp.clone())
+    };
+    let public_copy_success = if IS_ANDROID {
+        Some(String::from("Copied public storage response to clipboard"))
+    } else {
+        None
+    };
 
     let mut storage_path_binding = path.clone();
     let mut storage_body_binding = body.clone();
@@ -62,6 +83,9 @@ pub fn render_storage_tab(
                             value: path_value.clone(),
                             oninput: move |evt| storage_path_binding.set(evt.value()),
                             title: "Absolute path inside your session's private storage",
+                            data-touch-tooltip: touch_tooltip(
+                                "Absolute path inside your session's private storage",
+                            ),
                         }
                     }
                     label {
@@ -71,6 +95,9 @@ pub fn render_storage_tab(
                             value: body_value.clone(),
                             oninput: move |evt| storage_body_binding.set(evt.value()),
                             title: "Content to upload when storing data",
+                            data-touch-tooltip: touch_tooltip(
+                                "Content to upload when storing data",
+                            ),
                         }
                     }
                 }
@@ -78,6 +105,9 @@ pub fn render_storage_tab(
                     button {
                         class: "action",
                         title: "Fetch the stored value at this path",
+                        data-touch-tooltip: touch_tooltip(
+                            "Fetch the stored value at this path",
+                        ),
                         onclick: move |_| {
                             if let Some(session) = storage_session_get.read().as_ref().cloned() {
                                 let path = storage_path_get.read().clone();
@@ -108,6 +138,9 @@ pub fn render_storage_tab(
                     button {
                         class: "action secondary",
                         title: "Write the body above to this storage path",
+                        data-touch-tooltip: touch_tooltip(
+                            "Write the body above to this storage path",
+                        ),
                         onclick: move |_| {
                             if let Some(session) = storage_session_put.read().as_ref().cloned() {
                                 let path = storage_path_put.read().clone();
@@ -139,6 +172,9 @@ pub fn render_storage_tab(
                     button {
                         class: "action secondary",
                         title: "Delete the resource stored at this path",
+                        data-touch-tooltip: touch_tooltip(
+                            "Delete the resource stored at this path",
+                        ),
                         onclick: move |_| {
                             if let Some(session) = storage_session_delete.read().as_ref().cloned() {
                                 let path = storage_path_delete.read().clone();
@@ -168,7 +204,15 @@ pub fn render_storage_tab(
                     }
                 }
                 if !session_response.is_empty() {
-                    div { class: "outputs", {session_response} }
+                    div {
+                        class: "outputs copyable",
+                        data-touch-tooltip: touch_tooltip(
+                            "Tap to copy the storage response",
+                        ),
+                        data-touch-copy: touch_copy_option(session_copy_value.clone()),
+                        data-copy-success: session_copy_success.clone(),
+                        {session_response}
+                    }
                 }
             }
             section { class: "card",
@@ -181,6 +225,9 @@ pub fn render_storage_tab(
                             value: public_value.clone(),
                             oninput: move |evt| public_resource_binding.set(evt.value()),
                             title: "Enter a public storage path or pubky:// link to fetch",
+                            data-touch-tooltip: touch_tooltip(
+                                "Enter a public storage path or pubky:// link to fetch",
+                            ),
                         }
                     }
                 }
@@ -188,6 +235,9 @@ pub fn render_storage_tab(
                     button {
                         class: "action",
                         title: "Fetch the public resource using the Pubky client",
+                        data-touch-tooltip: touch_tooltip(
+                            "Fetch the public resource using the Pubky client",
+                        ),
                         onclick: move |_| {
                             let resource = public_resource_signal.read().clone();
                             if resource.trim().is_empty() {
@@ -216,7 +266,15 @@ pub fn render_storage_tab(
                     }
                 }
                 if !public_resp.is_empty() {
-                    div { class: "outputs", {public_resp} }
+                    div {
+                        class: "outputs copyable",
+                        data-touch-tooltip: touch_tooltip(
+                            "Tap to copy the public response",
+                        ),
+                        data-touch-copy: touch_copy_option(public_copy_value.clone()),
+                        data-copy-success: public_copy_success.clone(),
+                        {public_resp}
+                    }
                 }
             }
         }

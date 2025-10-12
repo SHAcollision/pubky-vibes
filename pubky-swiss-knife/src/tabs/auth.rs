@@ -7,6 +7,7 @@ use url::Url;
 use crate::tabs::{AuthTabState, format_session_info};
 use crate::utils::links::open_pubkyauth_link;
 use crate::utils::logging::ActivityLog;
+use crate::utils::mobile::{IS_ANDROID, touch_copy_option, touch_tooltip};
 use crate::utils::pubky::PubkyFacadeHandle;
 use crate::utils::qr::generate_qr_data_url;
 
@@ -46,7 +47,18 @@ pub fn render_auth_tab(
     let caps_value = { capabilities.read().clone() };
     let relay_value = { relay.read().clone() };
     let url_value = { url_output.read().clone() };
+    let copyable_url = if url_value.trim().is_empty() {
+        None
+    } else {
+        Some(url_value.clone())
+    };
     let status_value = { status.read().clone() };
+    let link_copy_success = if IS_ANDROID {
+        Some(String::from("Copied pubkyauth link to clipboard"))
+    } else {
+        None
+    };
+    let link_tooltip = "Share this link with someone to request delegated capabilities";
     let qr_value = { qr_data.read().clone() };
     let request_value = { request_body.read().clone() };
 
@@ -95,6 +107,9 @@ pub fn render_auth_tab(
                             value: caps_value,
                             oninput: move |evt| caps_binding.set(evt.value()),
                             title: "Describe the permissions you're requesting, using the usual capability syntax",
+                            data-touch-tooltip: touch_tooltip(
+                                "Describe the permissions you're requesting, using the usual capability syntax",
+                            ),
                             placeholder: "Example: /pub/app/:rw"
                         }
                     }
@@ -104,6 +119,9 @@ pub fn render_auth_tab(
                             value: relay_value,
                             oninput: move |evt| relay_binding.set(evt.value()),
                             title: "Optional relay URL to direct this authorization through",
+                            data-touch-tooltip: touch_tooltip(
+                                "Optional relay URL to direct this authorization through",
+                            ),
                             placeholder: "https://your-relay.example/link/"
                         }
                     }
@@ -112,6 +130,9 @@ pub fn render_auth_tab(
                     button {
                         class: "action",
                         title: "Create an authorization link and QR code with the current settings",
+                        data-touch-tooltip: touch_tooltip(
+                            "Create an authorization link and QR code with the current settings",
+                        ),
                         onclick: move |_| {
                         let caps_text = start_caps_signal.read().clone();
                         if caps_text.trim().is_empty() {
@@ -166,6 +187,9 @@ pub fn render_auth_tab(
                     button {
                         class: "action",
                         title: "Wait for the other party to approve and retrieve the resulting session",
+                        data-touch-tooltip: touch_tooltip(
+                            "Wait for the other party to approve and retrieve the resulting session",
+                        ),
                         onclick: move |_| {
                         let maybe_flow = {
                             let mut guard = await_flow_signal.write();
@@ -208,6 +232,9 @@ pub fn render_auth_tab(
                     button {
                         class: "action secondary",
                         title: "Cancel the current authorization request",
+                        data-touch-tooltip: touch_tooltip(
+                            "Cancel the current authorization request",
+                        ),
                         onclick: move |_| {
                             let had_flow = {
                                 let mut guard = cancel_flow_signal.write();
@@ -236,23 +263,35 @@ pub fn render_auth_tab(
                                     src: data_url,
                                     alt: "pubkyauth QR code",
                                     title: "Open this pubkyauth:// link locally",
+                                    data-touch-tooltip: touch_tooltip(
+                                        "Open this pubkyauth:// link locally",
+                                    ),
                                     onclick: open_link_handler(logs.clone(), url_value.clone()),
                                 }
                                 button {
                                     class: "action secondary qr-launch",
                                     r#type: "button",
                                     title: "Open this pubkyauth:// link locally",
+                                    data-touch-tooltip: touch_tooltip(
+                                        "Open this pubkyauth:// link locally",
+                                    ),
                                     onclick: open_link_handler(logs.clone(), url_value.clone()),
                                     "Open link locally",
                                 }
                             }
                         }
-                        textarea {
-                            class: "tall",
-                            readonly: true,
-                            value: url_value,
-                            title: "Share this link with someone to request delegated capabilities",
-                            placeholder: "Generated pubkyauth:// link"
+                        div {
+                            class: "copyable",
+                            data-touch-tooltip: touch_tooltip(link_tooltip),
+                            data-touch-copy: touch_copy_option(copyable_url.clone()),
+                            data-copy-success: link_copy_success.clone(),
+                            textarea {
+                                class: "tall",
+                                readonly: true,
+                                value: url_value,
+                                title: link_tooltip,
+                                placeholder: "Generated pubkyauth:// link"
+                            }
                         }
                     }
                 }
@@ -268,6 +307,9 @@ pub fn render_auth_tab(
                             value: request_value,
                             oninput: move |evt| request_binding.set(evt.value()),
                             title: "Paste a pubkyauth:// link you were given",
+                            data-touch-tooltip: touch_tooltip(
+                                "Paste a pubkyauth:// link you were given",
+                            ),
                             placeholder: "pubkyauth:///?caps=..."
                         }
                     }
@@ -276,6 +318,9 @@ pub fn render_auth_tab(
                     button {
                         class: "action",
                         title: "Approve the request using your loaded key",
+                        data-touch-tooltip: touch_tooltip(
+                            "Approve the request using your loaded key",
+                        ),
                         onclick: move |_| {
                             let url = approve_request_signal.read().clone();
                             if url.trim().is_empty() {

@@ -7,24 +7,24 @@ edition = "2024"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-anyhow = "1"
-base64 = "0.22"
-mimalloc = "0.1"
+anyhow = "1.0.100"
+base64 = "0.22.1"
+mimalloc = "0.1.48"
 pubky = "0.6.0-rc.6"
-url = "2.5"
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
-qrcode = "0.13"
-tokio = { version = "1", features = ["rt", "rt-multi-thread"] }
-serde_json = "1"
+url = "2.5.7"
+reqwest = { version = "0.12.23", default-features = false, features = ["rustls-tls"] }
+qrcode = "0.14.1"
+tokio = { version = "1.47.1", features = ["rt", "rt-multi-thread"] }
+serde_json = "1.0.145"
 
 [dev-dependencies]
-tempfile = "3"
+tempfile = "3.23.0"
 
 [target.'cfg(not(target_os = "android"))'.dependencies]
 dioxus = { version = "0.7.0-rc.1", features = ["desktop", "mobile"] }
 dioxus-desktop = "0.7.0-rc.1"
-rfd = "0.14"
-open = "5"
+rfd = "0.15.4"
+open = "5.3.2"
 
 [target.'cfg(target_os = "android")'.dependencies]
 dioxus = { version = "0.7.0-rc.1", features = ["mobile"] }

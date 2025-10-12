@@ -187,14 +187,14 @@ jobs:
           "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify "$SIGNED_APK"
           echo "apk=$SIGNED_APK" >> "$GITHUB_OUTPUT"
 
-        - name: Verify APK ABI coverage
-          run: |
-            set -euo pipefail
-            APK="${{ steps.sign-apk.outputs.apk }}"
-            declare -a ABIS=(arm64-v8a)
-            missing=0
-            for abi in "${ABIS[@]}"; do
-              if ! unzip -l "$APK" "lib/$abi/libdioxusmain.so" >/dev/null 2>&1; then
+      - name: Verify APK ABI coverage
+        run: |
+          set -euo pipefail
+          APK="${{ steps.sign-apk.outputs.apk }}"
+          declare -a ABIS=(arm64-v8a)
+          missing=0
+          for abi in "${ABIS[@]}"; do
+            if ! unzip -l "$APK" "lib/$abi/libdioxusmain.so" >/dev/null 2>&1; then
               echo "Missing libdioxusmain.so for ABI $abi" >&2
               missing=1
             fi

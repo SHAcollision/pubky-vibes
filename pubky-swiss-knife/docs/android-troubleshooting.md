@@ -3,43 +3,29 @@
 ## "You can't install the app on your device"
 
 Pixel 7/8-era handsets are 64-bit only; Google removed 32-bit runtime support entirely starting with the Pixel 7, so devices such
-as the Pixel 7a refuse to install packages that lack an `arm64-v8a` payload even when an `armeabi-v7a` build is present.[^pixel64]
-The default `dx bundle --android` workflow only copies the library that matches the GitHub runner architecture (for example,
-`x86_64` on Ubuntu runners). The resulting APK installs on emulators but fails on physical phones with the "You can't install the
-app on your device" message because the `lib/arm64-v8a` directory is missing entirely.
+as the Pixel 7a refuse to install packages that lack an `arm64-v8a` payload.[^pixel64] Early iterations of our workflow only copied
+the library that matched the GitHub runner architecture (for example, `x86_64` on Ubuntu runners). The resulting APK installed on
+emulators but failed on physical phones with the "You can't install the app on your device" message because the `lib/arm64-v8a`
+directory was missing entirely.
 
-Ensure every build run compiles the Rust crate for all Android targets (`aarch64-linux-android`, `armv7-linux-androideabi`,
-`i686-linux-android`, and `x86_64-linux-android`) and copy each `jniLibs/<abi>` directory into the Gradle project before
-assembling the release APK. That guarantees the artifact carries native code for every ABI Google Play and modern devices require.
+The CI workflow now targets `aarch64-linux-android` exclusively and reuses the generated `jniLibs/arm64-v8a` directory when
+assembling the final Gradle project. That yields an APK that installs cleanly on Pixel 7-class hardware. If you see the error
+again, confirm that the workflow logged an `dx bundle (aarch64-linux-android -> arm64-v8a)` step and that the produced APK contains
+`lib/arm64-v8a/libpubky_swiss_knife.so`.
 
-The resulting universal APK weighs roughly 9–10 MB when stripped and zipped, which aligns with the two Rust dynamic libraries plus
-Android support binaries; a significantly smaller artifact usually indicates that one or more architecture directories failed to
-make it into the build.
+The resulting APK weighs roughly 8–9 MB when stripped and zipped. A significantly smaller artifact usually indicates that the
+native library directory failed to make it into the build.
 
-## `dx bundle`: Android linker not found
+## Legacy ABI considerations
 
-Dioxus 0.7.0's Android backend expects the NDK to expose `armv7-linux-androideabiXX-clang` tool aliases, but Google's NDK ships the
-executables as `armv7a-linux-androideabiXX-clang`. When the alias is missing the CLI aborts with:
+If we later reintroduce additional ABIs, keep the following historical issues in mind:
 
-```
-ERROR dx bundle: Android linker not found at ".../armv7-linux-androideabi24-clang". Please set the `ANDROID_NDK_HOME` environment variable...
-```
-
-Creating symbolic links from the `armv7a` filenames to the `armv7` aliases inside
-`$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin` resolves the mismatch and lets the bundle step finish for the
-`armv7-linux-androideabi` target without downgrading the NDK.
-
-## `dx bundle`: undefined symbol `__atomic_load_8`
-
-Building the `i686-linux-android` variant links mimalloc statically, which pulls in 64-bit atomic intrinsics (`__atomic_load_8`,
-`__atomic_store_8`, etc.). The 32-bit Android sysroot does not ship those helpers in `libc`, so the linker fails with `undefined
-symbol: __atomic_load_8` unless the final binary links against `libatomic`.
-
-The repository ships a `build.rs` helper that scans the configured NDK for `libatomic.a` and wires it into the `i686-linux-android`
-link step automatically. Ensure your environment exposes `ANDROID_NDK_HOME`, `NDK_HOME`, or an Android SDK directory with the NDK
-installed so the script can discover the library; otherwise you can point the script at a custom installation with `NDK_HOST_TAG`
-and the standard environment variables. When the build script locates the archive it adds an explicit static link search path and
-links `libatomic` so the `dx bundle` run succeeds alongside the 64-bit variants.
+- Dioxus 0.7.0's Android backend expects the NDK to expose `armv7-linux-androideabiXX-clang` tool aliases even though the NDK
+  ships `armv7a-` executables. Creating symbolic links from the `armv7a` filenames to the `armv7` aliases inside
+  `$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin` resolves the mismatch.
+- The 32-bit `i686-linux-android` variant requires linking against `libatomic` because mimalloc references 64-bit atomic
+  intrinsics. If we need that target again we must add a build-script or `RUSTFLAGS` shim that locates and links the archive from
+  the active NDK.
 
 [^pixel64]: See Google's "[Moving the Android ecosystem to 64-bit only](https://android-developers.googleblog.com/2022/08/moving-android-ecosystem-to-64-bit-only.html)"
 announcement and contemporaneous Pixel 7 reviews noting the absence of 32-bit app support, such as Ars Technica's

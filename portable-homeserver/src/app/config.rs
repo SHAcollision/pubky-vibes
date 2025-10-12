@@ -149,7 +149,9 @@ pub(crate) fn persist_config_form(
 
     apply_config_form(form, &mut config)?;
 
-    if let Some(previous) = baseline && previous == config {
+    if let Some(previous) = baseline
+        && previous == config
+    {
         return Ok(ConfigPersistOutcome::Unchanged);
     }
 

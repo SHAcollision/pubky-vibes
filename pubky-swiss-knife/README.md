@@ -42,7 +42,7 @@ Manage signer key material:
 - Generate a fresh keypair (random Ed25519).
 - Import an existing secret key (base64-encoded 32 bytes).
 - Export the loaded secret key back into the editor.
-- Load or save encrypted recovery files using the shared passphrase format from `pubky-common` (paths auto-expand `~` and default to the `.pkarr` extension).
+- Load or save encrypted recovery files using the shared passphrase format from `pubky-common` (paths auto-expand `~` and default to the `.pkarr` extension). On Android the system file picker is unavailable, so enter absolute paths manually.
 
 ### Auth Tokens
 
@@ -89,6 +89,27 @@ All activity is appended to the "Activity" feed with color-coded status chips (i
 ## Cross-platform builds
 
 The release pipeline cross-compiles this crate from Ubuntu using `cargo-zigbuild`. You can reproduce those builds locally by following the [cross-building guide](../docs/cross-building.md).
+
+## Android build
+
+The Android port uses the same Dioxus UI tree as the desktop binary. To build the APK locally:
+
+1. Install the Android Rust targets and toolchain prerequisites. The [android-plan](docs/android-plan.md) documents the exact versions of the SDK, NDK (25.2.9519653), and environment variables that match the CI workflow.
+2. Install the Dioxus CLI (`cargo install dioxus-cli --version 0.7.0-rc.1`). This is the release-candidate build referenced by the 0.7.0 Android tooling guide.
+3. Run the Dioxus bundler to scaffold the Gradle project and compile the native libraries:
+
+   ```bash
+   dx bundle --android --release
+   ```
+
+4. Assemble the release APK with Gradle:
+
+   ```bash
+   cd target/dx/pubky-swiss-knife/release/android/app
+   ./gradlew assembleRelease --console=plain
+   ```
+
+Make sure the Android SDK environment variables (e.g. `ANDROID_HOME`, `ANDROID_SDK_ROOT`, `NDK_HOME`) point to the toolchain installed in step 1 before invoking Gradle. The unsigned release build is available under `app/build/outputs/apk/release/`. CI runs the same sequence and uploads the resulting artifact.
 
 ## License
 

@@ -1,0 +1,11 @@
+[application]
+out_dir = "dist"
+android_min_sdk_version = 24
+
+[web.app]
+title = "Pubky Swiss Knife"
+
+[bundle]
+identifier = "org.pubky.swissknife"
+publisher = "Pubky"
+short_description = "Graphical control panel for the Pubky SDK"

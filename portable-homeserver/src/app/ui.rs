@@ -15,7 +15,7 @@ use super::style::{LOGO_DATA_URI, STYLE};
 use super::tasks::{spawn_start_task, stop_current_server};
 
 #[component]
-pub(crate) fn App() -> Element {
+pub fn App() -> Element {
     let initial_data_dir = default_data_dir();
     let initial_config_state = config_state_from_dir(&initial_data_dir);
 

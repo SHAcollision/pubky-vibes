@@ -1,0 +1,171 @@
+[general]
+# The mode for the signup. Default: "token_required" Options:
+# "open" - anyone can signup.
+# "token_required" - a signup token is required to signup.
+signup_mode = "token_required"
+
+# LMDB backup interval in seconds. 0 means disabled.
+# Periodically creates a "safe to copy" compacted backup on single
+# file under `{data_dir}/data/lmdb/backup.mdb`
+lmdb_backup_interval_s = 0
+
+# Maximum storage a single user may occupy (in MB).
+# Set it to 0 for unlimited.
+user_storage_quota_mb = 0
+
+[drive]
+# The port number to run an HTTPS (Pkarr TLS) server on.
+# Pkarr TLS is a TLS implementation that is compatible with the Pkarr protocol.
+# No need to provide a ICANN TLS certificate.
+pubky_listen_socket = "127.0.0.1:6287"
+
+# The port number to run an HTTP (clear text) server on.
+# Used for http requests from regular browsers.
+# May be put behind a reverse proxy with TLS enabled.
+icann_listen_socket = "127.0.0.1:6286"
+
+# Rate limit endpoints dynamically.
+# `path` is a glob pattern of the path. See syntax in https://crates.io/crates/fast-glob
+# `method` is the HTTP method. Examples: GET, POST, PUT, HEAD, DELETE
+# `quota` defines the limit itself in the format $rate$rate_unit/$time_unit.
+#  - $rate is a positive integer, max 4'294'967'296.
+#  - $rate_unit is either "r" for requests, "kb" for kilobytes, 
+#    "mb" for megabytes, "gb" for gigabytes.
+#  Speed limits limit download and upload.
+#  - $time_unit is either "s" for second, "m" for minute.
+# `key` defines what who is rate limited. 
+#  - "ip" limits based on the IP address.
+#  - "user" limits based on the user pubkey. Requires the endpoint to have authentication.
+# `burst` is a temporary allowance of quota that is added to the limit. 
+#   By default, burst is equal the quota rate.
+# `whitelist` is a list of IP addresses or user pubkeys that are exempt from the rate limit.
+#
+# Limit login attempts to 20 requests per minute per IP. 
+[[drive.rate_limits]]
+path = "/session"
+method = "POST"
+quota = "20r/m"
+key = "ip"
+whitelist = [
+    "127.0.0.1"
+]
+#
+# Limit file uploads to 1 megabyte per second per user with a temporary burst of 10 megabytes.
+[[drive.rate_limits]]
+path = "/pub/**" 
+method = "PUT"
+quota = "1mb/s"
+key = "user"
+burst = 10
+
+[storage]
+# Defines where the files are stored.
+# You have multiple options defined by the type.
+# Supported types: "file_system", "google_bucket".
+# Depending on the option, different settings need to be provided.
+# Only one storage type can be activated at one time.
+
+# Local File System
+# Files are saved on your local disk.
+type = "file_system"
+
+# Google Cloud Bucket
+# Files are saved in a Google Cloud Bucket.
+# type = "google_bucket"
+# Name of the Google Cloud Bucket. The bucket must exist already.
+# bucket_name = "my_bucket"
+# Path to the service account file. The content of the service account file can also be added directly in here.
+# This must be absolute/full path.
+# credential = "/path/to/my_service_account.json"
+
+# In Memory storage
+# Files are saved in memory. Only use when you know what you are doing!
+# type = "in_memory"
+
+[admin]
+# The port number to run the admin HTTP (clear text) server on.
+# Used for admin requests from the admin UI.
+# If this API is every exposed to the public internet, make sure to add a HTTPS cert.
+listen_socket = "127.0.0.1:6288"
+
+# The password for the admin user to access the admin UI.
+admin_password = "admin"
+
+[pkdns]
+# The public IP address of the homeserver pubky_drive_api to be advertised on the DHT.
+# Must be set to be reachable from the outside.
+public_ip = "127.0.0.1"
+
+# The pubky tls port in case it differs from the pubky_listen_socket port.
+# If not set defaults to the pubky_listen_socket port.
+public_pubky_tls_port = 6287
+
+# The icann http port in case it differs from the icann_listen_socket port.
+# If not set defaults to the icann_listen_socket port.
+public_icann_http_port = 80
+
+# An ICANN domain name is necessary to support legacy browsers
+#
+# Make sure to setup a domain name and point it the IP
+# address of this machine where you are running this server.
+#
+# This domain should point to the `<public_ip>:<public_port>`.
+# 
+# ICANN TLS is not natively supported, so you should be running
+# a reverse proxy and managing certificates yourself.
+icann_domain = "localhost"
+
+# The interval at which user keys are republished to the DHT.
+# 0 means disabled.
+user_keys_republisher_interval = 14400 # 4 hours in seconds
+
+# List of bootstrap nodes for the DHT.
+# If not set, the default pkarr bootstrap nodes will be used.
+# domain:port format.
+dht_bootstrap_nodes = [
+    "router.bittorrent.com:6881",
+    "dht.transmissionbt.com:6881",
+    "dht.libtorrent.org:25401",
+    "relay.pkarr.org:6881",
+]
+
+# Relay node urls for the DHT.
+# Improves the availability of pkarr packets.
+# If not set and no bootstrap nodes are set, the default pkarr relay nodes will be used.
+dht_relay_nodes = ["https://pkarr.pubky.app", "https://pkarr.pubky.org"]
+
+# Default UDP request timeout for the DHT
+dht_request_timeout_ms = 2000
+
+[logging]
+# Global runtime log level sets the default minimum logging level for all messages across the executable.
+# Available options: "trace", "debug", "info", "warn", "error"
+level = "info"
+
+# Per-module log levels overrides the global log level for specific modules.
+# Useful for suppressing logs from external dependencies or increasing verbosity for debugging.
+module_levels = ["pubky_homeserver=debug", "tower_http=debug"]
+
+[discovery]
+# Default cadence for refreshing the combined Pkarr packet.
+pkarr_publish_interval_minutes = 60
+
+[discovery.iroh]
+# Enable the generation of `_iroh` TXT records alongside the HTTPS/SVCB entries.
+enabled = false
+
+# When disabled we only publish the HTTPS coordinates; enabling this section lets the homeserver
+# announce Iroh direct addresses and an optional relay for NAT traversal.
+publish_interval_minutes = 5
+
+# Reduce the TTL relative to the HTTPS records because relay assignments can change more frequently.
+txt_ttl_seconds = 300
+
+# List of QUIC socket addresses reachable without a relay. Leave empty when behind hard NAT.
+direct_addresses = []
+
+# Optional relay URL returned by the embedded gateway. Uncomment to point at a public relay.
+# relay_url = "https://relay.example/pubky"
+
+# Application protocol used when establishing QUIC tunnels.
+alpn = "pubky/iroh-homeserver/0"

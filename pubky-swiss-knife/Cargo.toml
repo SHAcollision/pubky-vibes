@@ -6,15 +6,26 @@ edition = "2024"
 [dependencies]
 anyhow = "1"
 base64 = "0.22"
+bytes = "1"
 dioxus = { version = "0.7.0-rc.1", features = ["desktop"] }
 dioxus-desktop = "0.7.0-rc.1"
+http = "1"
+hyper = { version = "1.7", features = ["client", "http1"] }
+hyper-util = { version = "0.1.17", features = ["client", "http1", "tokio"] }
+http-body-util = "0.1"
+iroh = "0.93.1"
 mimalloc = "0.1"
+pin-project-lite = "0.2"
+pkarr = "3.10.0"
 pubky = "0.6.0-rc.6"
-url = "2.5"
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
+pubky-common = "0.6.0-rc.6"
 qrcode = "0.13"
+rand = "0.8"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 rfd = "0.14"
-tokio = { version = "1", features = ["rt", "rt-multi-thread"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "net", "io-util", "time"] }
+tracing = "0.1"
+url = "2.5"
 
 [dev-dependencies]
 tempfile = "3"

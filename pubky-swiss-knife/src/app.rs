@@ -102,6 +102,8 @@ pub fn App() -> Element {
     let http_headers = use_signal(String::new);
     let http_body = use_signal(String::new);
     let http_response = use_signal(String::new);
+    let http_iroh_target = use_signal(String::new);
+    let http_iroh_summary = use_signal(String::new);
 
     if !*pubky_bootstrapped.read() {
         pubky_bootstrapped.set(true);
@@ -206,6 +208,8 @@ pub fn App() -> Element {
                             http_headers,
                             http_body,
                             http_response,
+                            http_iroh_target,
+                            http_iroh_summary,
                             logs,
                         ),
                     }

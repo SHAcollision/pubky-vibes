@@ -13,5 +13,9 @@ pubky-testnet = "0.6.0-rc.6"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal", "fs"] }
 toml = "0.8"
 
+[patch.crates-io]
+pubky-homeserver = { path = "../vendor/pubky-homeserver/pubky-homeserver-0.6.0-rc.6" }
+
 [dev-dependencies]
 tempfile = "3"
+

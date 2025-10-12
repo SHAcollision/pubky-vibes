@@ -8,7 +8,7 @@ on:
 
 jobs:
   fmt:
-    name: cargo fmt
+    name: Fmt - Swiss Knife
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,29 +27,8 @@ jobs:
         working-directory: pubky-swiss-knife
         run: cargo fmt -- --check
 
-  check:
-    name: cargo check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - name: Install GTK/WebKit dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libgtk-3-dev \
-            libayatana-appindicator3-dev \
-            libxdo-dev
-          sudo apt-get install -y libwebkit2gtk-4.1-dev || sudo apt-get install -y libwebkit2gtk-4.0-dev
-      - uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: pubky-swiss-knife
-      - name: Cargo check
-        working-directory: pubky-swiss-knife
-        run: cargo check
-
   clippy:
-    name: cargo clippy
+    name: Clippy - Swiss Knife
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -72,7 +51,7 @@ jobs:
         run: cargo clippy -- -D warnings
 
   test:
-    name: cargo test
+    name: Test - Swiss Knife
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

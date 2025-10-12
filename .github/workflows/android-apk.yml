@@ -69,6 +69,28 @@ jobs:
           echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
           echo "$ANDROID_HOME/ndk/$NDK_VERSION" >> "$GITHUB_PATH"
 
+      - name: Patch NDK toolchain for armv7 alias
+        run: |
+          set -euo pipefail
+
+          TOOLCHAIN_DIR="$ANDROID_HOME/ndk/$NDK_VERSION/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          if [ ! -d "$TOOLCHAIN_DIR" ]; then
+            echo "Unable to locate NDK LLVM toolchain at $TOOLCHAIN_DIR" >&2
+            exit 1
+          fi
+
+          pushd "$TOOLCHAIN_DIR" >/dev/null
+          for api in $(seq 21 35); do
+            for compiler in clang "clang++"; do
+              src="armv7a-linux-androideabi${api}-${compiler}"
+              dest="armv7-linux-androideabi${api}-${compiler}"
+              if [ -x "$src" ] && [ ! -e "$dest" ]; then
+                ln -s "$src" "$dest"
+              fi
+            done
+          done
+          popd >/dev/null
+
       - name: Build Android bundles for every ABI
         working-directory: pubky-swiss-knife
         env:

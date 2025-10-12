@@ -6,6 +6,7 @@ This plan follows the Dioxus 0.7.0 guides for mobile tooling and bundling to del
 - Install the full Rust Android target matrix (`aarch64-linux-android`, `armv7-linux-androideabi`, `i686-linux-android`, `x86_64-linux-android`) so `dx` can cross-compile the app for every ABI that Gradle packages.
 - Provision the Android SDK, NDK 25.2.9519653, command-line tools, CMake, and platform/build tools through `sdkmanager`, mirroring the setup described in the Dioxus mobile platform guide.
 - Export `JAVA_HOME`, `ANDROID_HOME`/`ANDROID_SDK_ROOT`, `NDK_HOME`, and extend `PATH` with the SDK tools (`cmdline-tools`, `platform-tools`, and emulator binaries) to satisfy the CLI environment checks before building or serving Android targets.
+- Patch the LLVM toolchain inside the NDK so `armv7-linux-androideabiXX-clang{,++}` resolves to the shipped `armv7a-linux-androideabiXX-clang{,++}` binaries; without the aliases Dioxus fails to compile the 32-bit target during CI.
 
 ## 2. Platform-neutral project structure
 - Split platform bootstrapping from the UI so both desktop and mobile launch paths reuse the same `App` component tree.

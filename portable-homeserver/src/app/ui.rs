@@ -70,6 +70,49 @@ struct DisableUserFormState {
     in_flight: bool,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum AppTab {
+    Overview,
+    Configuration,
+    Admin,
+}
+
+impl AppTab {
+    const ALL: [Self; 3] = [Self::Overview, Self::Configuration, Self::Admin];
+
+    fn label(self) -> &'static str {
+        match self {
+            Self::Overview => "Overview",
+            Self::Configuration => "Configuration",
+            Self::Admin => "Admin tools",
+        }
+    }
+
+    fn icon(self) -> (&'static str, &'static [&'static str]) {
+        match self {
+            Self::Overview => (
+                "0 0 24 24",
+                &[
+                    r#"M2.25 12l9-9 9 9"#,
+                    r#"M4.5 9.75v10.5a.75.75 0 0 0 .75.75H9v-4.5h6v4.5h3.75a.75.75 0 0 0 .75-.75V9.75"#,
+                ],
+            ),
+            Self::Configuration => (
+                "0 0 24 24",
+                &[
+                    r#"M10.5 6.75h7.5m-7.5 0a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 0 0-3 0M3 6.75h3m3 10.5h7.5m-7.5 0a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 0 0-3 0M3 17.25h3M13.5 12h7.5m-7.5 0a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 0 0-3 0M3 12h7.5"#,
+                ],
+            ),
+            Self::Admin => (
+                "0 0 24 24",
+                &[
+                    r#"M9 12.75 11.25 15 15 9.75M12 3.75l-7.5 3v4.5c0 5.25 3.75 8.25 7.5 9 3.75-.75 7.5-3.75 7.5-9v-4.5l-7.5-3Z"#,
+                ],
+            ),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 struct AdminPanelState {
     password: String,
@@ -298,26 +341,322 @@ pub fn App() -> Element {
     let network = use_signal_sync(|| NetworkProfile::Mainnet);
     let config_state = use_signal_sync(|| initial_config_state.clone());
 
-    let status_for_admin = status;
-    let config_for_admin = config_state;
+    let active_tab = use_signal_sync(|| AppTab::Overview);
 
-    let status_snapshot = status.read().clone();
-    let data_dir_snapshot = data_dir.read().clone();
+    let selected_tab = *active_tab.read();
+
+    let tab_signal = active_tab;
+    let mut network_for_toggle = network;
+    let network_for_overview = network;
+    let network_for_config = network;
+    let data_dir_for_overview = data_dir;
+    let data_dir_for_config = data_dir;
+    let status_for_overview = status;
+    let status_for_config = status;
+    let status_for_admin = status;
+    let running_for_overview = running_server;
+    let running_for_config = running_server;
+    let config_for_config = config_state;
+    let config_for_admin = config_state;
 
     rsx! {
         style { "{STYLE}" }
         main { class: "app",
-            AdminPanel { status: status_for_admin, config_state: config_for_admin }
             Hero {}
-            ControlsPanel {
-                data_dir: data_dir,
-                network: network,
-                config_state: config_state,
-                status: status,
-                running_server: running_server
+            div { class: "app-shell",
+                div { class: "tab-header",
+                    TabNavigation { active_tab: tab_signal }
+                    NetworkToggleBar {
+                        selected: *network_for_toggle.read(),
+                        on_select: move |profile| *network_for_toggle.write() = profile,
+                    }
+                }
+                section { class: "tab-content",
+                    match selected_tab {
+                        AppTab::Overview => rsx! {
+                            OverviewTab {
+                                network: network_for_overview,
+                                data_dir: data_dir_for_overview,
+                                status: status_for_overview,
+                                running_server: running_for_overview,
+                            }
+                        },
+                        AppTab::Configuration => rsx! {
+                            ConfigurationTab {
+                                network: network_for_config,
+                                data_dir: data_dir_for_config,
+                                config_state: config_for_config,
+                                status: status_for_config,
+                                running_server: running_for_config,
+                            }
+                        },
+                        AppTab::Admin => rsx! {
+                            AdminTab {
+                                status: status_for_admin,
+                                config_state: config_for_admin,
+                            }
+                        },
+                    }
+                }
             }
-            StatusPanel { status: status_snapshot }
-            FooterNotes { data_dir: data_dir_snapshot }
+        }
+    }
+}
+
+#[component]
+fn TabNavigation(active_tab: Signal<AppTab, SyncStorage>) -> Element {
+    let current = *active_tab.read();
+
+    rsx! {
+        nav { class: "tab-navigation",
+            for tab in AppTab::ALL {
+                button {
+                    class: if tab == current { "tab-button active" } else { "tab-button" },
+                    onclick: move |_| *active_tab.write() = tab,
+                    span { class: "tab-icon", aria_hidden: "true",
+                        svg {
+                            view_box: tab.icon().0,
+                            fill: "none",
+                            stroke: "currentColor",
+                            stroke_width: "1.5",
+                            for path in tab.icon().1 {
+                                path {
+                                    d: *path,
+                                    stroke_linecap: "round",
+                                    stroke_linejoin: "round",
+                                }
+                            }
+                        }
+                    }
+                    span { class: "tab-label", "{tab.label()}" }
+                }
+            }
+        }
+    }
+}
+
+#[component]
+fn NetworkToggleBar(selected: NetworkProfile, on_select: EventHandler<NetworkProfile>) -> Element {
+    rsx! {
+        div { class: "network-toggle",
+            label { class: "network-toggle-option",
+                input {
+                    r#type: "radio",
+                    name: "network-profile",
+                    checked: matches!(selected, NetworkProfile::Mainnet),
+                    onchange: move |_| on_select.call(NetworkProfile::Mainnet),
+                }
+                span { class: "network-toggle-text", "{NetworkProfile::Mainnet.label()}" }
+            }
+            label { class: "network-toggle-option",
+                input {
+                    r#type: "radio",
+                    name: "network-profile",
+                    checked: matches!(selected, NetworkProfile::Testnet),
+                    onchange: move |_| on_select.call(NetworkProfile::Testnet),
+                }
+                span { class: "network-toggle-text", "{NetworkProfile::Testnet.label()}" }
+            }
+        }
+    }
+}
+
+#[component]
+fn OverviewTab(
+    network: Signal<NetworkProfile, SyncStorage>,
+    data_dir: Signal<String, SyncStorage>,
+    status: Signal<ServerStatus, SyncStorage>,
+    running_server: Signal<Option<RunningServer>, SyncStorage>,
+) -> Element {
+    let status_snapshot = status.read().clone();
+    let start_disabled = matches!(
+        status_snapshot,
+        ServerStatus::Starting | ServerStatus::Running(_) | ServerStatus::Stopping
+    );
+    let stop_disabled = matches!(
+        status_snapshot,
+        ServerStatus::Idle | ServerStatus::Starting | ServerStatus::Stopping
+    );
+
+    let selected_network = *network.read();
+    let current_dir = { data_dir.read().clone() };
+
+    let network_for_start = network;
+    let data_dir_for_start = data_dir;
+    let mut status_for_start = status;
+    let mut running_for_start = running_server;
+    let status_for_stop = status;
+    let running_for_stop = running_server;
+
+    rsx! {
+        section { class: "tab-section overview",
+            div { class: "overview-layout",
+                div { class: "overview-controls",
+                    h2 { "Run your homeserver" }
+                    p { class: "overview-copy",
+                        "Start or stop the homeserver for the selected network. Keep this app open while it is running."
+                    }
+                    ActionButtons {
+                        start_disabled,
+                        stop_disabled,
+                        on_start: move |_| {
+                            let selection = *network_for_start.read();
+                            let data_dir_value = data_dir_for_start.read().to_string();
+                            let start_spec = match resolve_start_spec(selection, &data_dir_value) {
+                                Ok(spec) => spec,
+                                Err(err) => {
+                                    *status_for_start.write() = ServerStatus::Error(err.to_string());
+                                    return;
+                                }
+                            };
+
+                            running_for_start.write().take();
+                            spawn_start_task(start_spec, status_for_start, running_for_start);
+                        },
+                        on_stop: move |_| {
+                            stop_current_server(status_for_stop, running_for_stop, None::<fn()>);
+                        }
+                    }
+                    if matches!(selected_network, NetworkProfile::Mainnet) {
+                        div { class: "data-dir-summary",
+                            span { class: "summary-label", "Data directory" }
+                            span { class: "summary-value", "{current_dir}" }
+                        }
+                    }
+                    p { class: "footnote",
+                        "Testnet runs a local DHT, relays, and homeserver with fixed ports using pubky-testnet."
+                    }
+                }
+                StatusPanel { status: status_snapshot }
+            }
+        }
+    }
+}
+
+#[component]
+fn ConfigurationTab(
+    network: Signal<NetworkProfile, SyncStorage>,
+    data_dir: Signal<String, SyncStorage>,
+    config_state: Signal<ConfigState, SyncStorage>,
+    status: Signal<ServerStatus, SyncStorage>,
+    running_server: Signal<Option<RunningServer>, SyncStorage>,
+) -> Element {
+    let selected_network = *network.read();
+
+    if matches!(selected_network, NetworkProfile::Testnet) {
+        return rsx! {
+            section { class: "tab-section config",
+                div { class: "empty-state-card",
+                    h2 { "Configuration disabled on Testnet" }
+                    p {
+                        "The bundled Static Testnet comes with its own defaults. Switch back to Mainnet to edit persistent homeserver settings."
+                    }
+                }
+            }
+        };
+    }
+
+    let status_snapshot = status.read().clone();
+    let restart_blocked = matches!(
+        status_snapshot,
+        ServerStatus::Starting | ServerStatus::Stopping
+    );
+
+    let current_dir = { data_dir.read().clone() };
+
+    let mut data_dir_for_change = data_dir;
+    let mut config_state_for_reload = config_state;
+    let data_dir_for_reload = data_dir;
+    let mut config_state_for_save = config_state;
+    let data_dir_for_save = data_dir;
+    let status_for_save = status;
+    let running_for_save = running_server;
+    let network_for_save = network;
+    let config_state_for_editor = config_state;
+
+    rsx! {
+        section { class: "tab-section config",
+            div { class: "configuration-layout",
+                DataDirInput {
+                    value: current_dir.clone(),
+                    on_change: move |value| *data_dir_for_change.write() = value,
+                }
+                ConfigEditor {
+                    config_state: config_state_for_editor,
+                    restart_blocked,
+                    on_reload: move |_| {
+                        let dir = data_dir_for_reload.read().to_string();
+                        match load_config_form_from_dir(&dir) {
+                            Ok(form) => {
+                                let mut state = config_state_for_reload.write();
+                                state.form = form;
+                                state.dirty = false;
+                                state.feedback = None;
+                            }
+                            Err(err) => {
+                                let mut state = config_state_for_reload.write();
+                                state.feedback = Some(ConfigFeedback::PersistenceError(err.to_string()));
+                            }
+                        }
+                    },
+                    on_save_and_restart: move |_| {
+                        let form_snapshot = {
+                            let state = config_state_for_save.read();
+                            state.form.clone()
+                        };
+                        let dir = data_dir_for_save.read().to_string();
+
+                        match persist_config_form(&dir, &form_snapshot) {
+                            Ok(_outcome) => {
+                                let selection = *network_for_save.read();
+                                let start_spec = match resolve_start_spec(selection, &dir) {
+                                    Ok(spec) => spec,
+                                    Err(err) => {
+                                        let mut state = config_state_for_save.write();
+                                        state.feedback = Some(ConfigFeedback::ValidationError(err.to_string()));
+                                        return;
+                                    }
+                                };
+
+                                {
+                                    let mut state = config_state_for_save.write();
+                                    state.dirty = false;
+                                    state.feedback = Some(ConfigFeedback::Saved);
+                                }
+
+                                stop_current_server(
+                                    status_for_save,
+                                    running_for_save,
+                                    Some(move || {
+                                        spawn_start_task(
+                                            start_spec,
+                                            status_for_save,
+                                            running_for_save,
+                                        );
+                                    }),
+                                );
+                            }
+                            Err(err) => {
+                                let mut state = config_state_for_save.write();
+                                state.feedback = Some(ConfigFeedback::PersistenceError(err.to_string()));
+                            }
+                        }
+                    }
+                }
+                FooterNotes { data_dir: current_dir }
+            }
+        }
+    }
+}
+
+#[component]
+fn AdminTab(
+    status: Signal<ServerStatus, SyncStorage>,
+    config_state: Signal<ConfigState, SyncStorage>,
+) -> Element {
+    rsx! {
+        section { class: "tab-section admin",
+            AdminPanel { status, config_state }
         }
     }
 }
@@ -683,168 +1022,6 @@ fn Hero() -> Element {
                 p {
                     "Start a Pubky homeserver with a single click. Configure endpoints, save the settings, and keep this window open while your node is online."
                 }
-            }
-        }
-    }
-}
-
-#[component]
-fn ControlsPanel(
-    data_dir: Signal<String, SyncStorage>,
-    network: Signal<NetworkProfile, SyncStorage>,
-    config_state: Signal<ConfigState, SyncStorage>,
-    status: Signal<ServerStatus, SyncStorage>,
-    running_server: Signal<Option<RunningServer>, SyncStorage>,
-) -> Element {
-    let status_snapshot = status.read().clone();
-    let start_disabled = matches!(
-        status_snapshot,
-        ServerStatus::Starting | ServerStatus::Running(_) | ServerStatus::Stopping
-    );
-    let stop_disabled = matches!(
-        status_snapshot,
-        ServerStatus::Idle | ServerStatus::Starting | ServerStatus::Stopping
-    );
-    let restart_blocked = matches!(
-        status_snapshot,
-        ServerStatus::Starting | ServerStatus::Stopping
-    );
-
-    let selected_network = *network.read();
-    let network_for_start = network;
-    let data_dir_for_start = data_dir;
-    let mut status_for_start = status;
-    let mut running_for_start = running_server;
-    let status_for_stop = status;
-    let running_for_stop = running_server;
-    let mut config_state_for_reload = config_state;
-    let data_dir_for_reload = data_dir;
-    let mut config_state_for_save = config_state;
-    let data_dir_for_save = data_dir;
-    let status_for_save = status;
-    let running_for_save = running_server;
-    let network_for_save = network;
-
-    rsx! {
-        section { class: "controls",
-            NetworkSelector { selected: selected_network, on_select: move |profile| *network.write() = profile }
-            DataDirInput { value: data_dir.read().clone(), on_change: move |value| *data_dir.write() = value }
-            ConfigEditor {
-                config_state,
-                restart_blocked,
-                on_reload: move |_| {
-                    let dir = data_dir_for_reload.read().to_string();
-                    match load_config_form_from_dir(&dir) {
-                        Ok(form) => {
-                            let mut state = config_state_for_reload.write();
-                            state.form = form;
-                            state.dirty = false;
-                            state.feedback = None;
-                        }
-                        Err(err) => {
-                            let mut state = config_state_for_reload.write();
-                            state.feedback = Some(ConfigFeedback::PersistenceError(err.to_string()));
-                        }
-                    }
-                },
-                on_save_and_restart: move |_| {
-                    let form_snapshot = {
-                        let state = config_state_for_save.read();
-                        state.form.clone()
-                    };
-                    let dir = data_dir_for_save.read().to_string();
-
-                    match persist_config_form(&dir, &form_snapshot) {
-                        Ok(_outcome) => {
-                            let selection = *network_for_save.read();
-                            let start_spec = match resolve_start_spec(selection, &dir) {
-                                Ok(spec) => spec,
-                                Err(err) => {
-                                    let mut state = config_state_for_save.write();
-                                    state.feedback = Some(ConfigFeedback::ValidationError(err.to_string()));
-                                    return;
-                                }
-                            };
-
-                            {
-                                let mut state = config_state_for_save.write();
-                                state.dirty = false;
-                                state.feedback = Some(ConfigFeedback::Saved);
-                            }
-
-                            stop_current_server(
-                                status_for_save,
-                                running_for_save,
-                                Some(move || {
-                                    spawn_start_task(
-                                        start_spec,
-                                        status_for_save,
-                                        running_for_save,
-                                    );
-                                }),
-                            );
-                        }
-                        Err(err) => {
-                            let mut state = config_state_for_save.write();
-                            state.feedback = Some(ConfigFeedback::PersistenceError(err.to_string()));
-                        }
-                    }
-                }
-            }
-            ActionButtons {
-                start_disabled,
-                stop_disabled,
-                on_start: move |_| {
-                    let selection = *network_for_start.read();
-                    let data_dir_value = data_dir_for_start.read().to_string();
-                    let start_spec = match resolve_start_spec(selection, &data_dir_value) {
-                        Ok(spec) => spec,
-                        Err(err) => {
-                            *status_for_start.write() = ServerStatus::Error(err.to_string());
-                            return;
-                        }
-                    };
-
-                    running_for_start.write().take();
-                    spawn_start_task(start_spec, status_for_start, running_for_start);
-                },
-                on_stop: move |_| {
-                    stop_current_server(status_for_stop, running_for_stop, None::<fn()>);
-                }
-            }
-        }
-    }
-}
-
-#[component]
-fn NetworkSelector(selected: NetworkProfile, on_select: EventHandler<NetworkProfile>) -> Element {
-    rsx! {
-        div { class: "network-selector",
-            label { "Select network" }
-            div { class: "network-options",
-                label { class: "network-option",
-                    input {
-                        r#type: "radio",
-                        name: "network",
-                        value: "mainnet",
-                        checked: matches!(selected, NetworkProfile::Mainnet),
-                        onchange: move |_| on_select.call(NetworkProfile::Mainnet),
-                    }
-                    span { "Mainnet" }
-                }
-                label { class: "network-option",
-                    input {
-                        r#type: "radio",
-                        name: "network",
-                        value: "testnet",
-                        checked: matches!(selected, NetworkProfile::Testnet),
-                        onchange: move |_| on_select.call(NetworkProfile::Testnet),
-                    }
-                    span { "Static Testnet" }
-                }
-            }
-            p { class: "footnote",
-                "Testnet runs a local DHT, relays, and homeserver with fixed ports using pubky-testnet."
             }
         }
     }

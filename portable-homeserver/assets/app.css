@@ -23,6 +23,172 @@ main.app {
     gap: 36px;
 }
 
+.admin-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    background: linear-gradient(160deg, rgba(6, 30, 48, 0.92), rgba(4, 16, 30, 0.9));
+    border: 1px solid rgba(0, 194, 255, 0.28);
+    border-radius: 26px;
+    padding: 28px 32px;
+    box-shadow: 0 28px 60px rgba(3, 18, 32, 0.45);
+    backdrop-filter: blur(22px);
+}
+
+.admin-panel-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+}
+
+.admin-panel-heading h2 {
+    margin: 0;
+    font-size: 1.6rem;
+}
+
+.admin-panel-heading p {
+    margin: 4px 0 0;
+    color: rgba(230, 244, 255, 0.78);
+}
+
+.admin-panel-buttons {
+    display: flex;
+    gap: 12px;
+}
+
+.admin-card {
+    background: rgba(3, 16, 27, 0.9);
+    border: 1px solid rgba(0, 194, 255, 0.24);
+    border-radius: 20px;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.admin-card h3 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+.admin-card p {
+    margin: 0;
+    color: rgba(230, 244, 255, 0.75);
+}
+
+.admin-stats-card {
+    background: linear-gradient(150deg, rgba(5, 38, 58, 0.92), rgba(3, 22, 40, 0.92));
+    border-color: rgba(0, 230, 173, 0.35);
+}
+
+.admin-actions-grid {
+    display: grid;
+    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
+.admin-card label {
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-size: 0.8rem;
+    color: rgba(192, 227, 255, 0.82);
+}
+
+.admin-card input[type="text"],
+.admin-card input[type="password"] {
+    background: rgba(4, 18, 30, 0.95);
+    border: 1px solid rgba(0, 194, 255, 0.32);
+    border-radius: 14px;
+    padding: 12px 14px;
+    font-size: 0.95rem;
+    color: inherit;
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+}
+
+.admin-card input[type="text"]:focus,
+.admin-card input[type="password"]:focus {
+    outline: none;
+    border-color: rgba(16, 255, 215, 0.8);
+    box-shadow: 0 0 0 2px rgba(0, 209, 255, 0.25);
+}
+
+.admin-metrics-grid {
+    display: grid;
+    gap: 18px;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.admin-metric {
+    background: rgba(5, 24, 38, 0.85);
+    border: 1px solid rgba(0, 194, 255, 0.28);
+    border-radius: 18px;
+    padding: 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.metric-label {
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(173, 222, 255, 0.78);
+}
+
+.metric-value {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: #5be4ff;
+}
+
+.metric-hint {
+    font-size: 0.85rem;
+    color: rgba(230, 244, 255, 0.72);
+}
+
+.admin-feedback {
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 0.9rem;
+}
+
+.admin-feedback.info {
+    background: rgba(0, 194, 255, 0.18);
+    border: 1px solid rgba(0, 194, 255, 0.35);
+    color: #a8f2ff;
+}
+
+.admin-feedback.success {
+    background: rgba(0, 230, 173, 0.18);
+    border: 1px solid rgba(0, 230, 173, 0.35);
+    color: #8cffdf;
+}
+
+.admin-feedback.error {
+    background: rgba(255, 118, 118, 0.16);
+    border: 1px solid rgba(255, 118, 118, 0.45);
+    color: #ffc7c7;
+}
+
+.admin-info-message {
+    font-size: 0.95rem;
+    color: rgba(230, 244, 255, 0.78);
+}
+
+.token-display {
+    background: rgba(1, 6, 12, 0.65);
+    border: 1px solid rgba(0, 194, 255, 0.25);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    overflow-x: auto;
+    font-size: 0.9rem;
+    color: #a8f2ff;
+}
+
 .hero {
     position: relative;
     display: flex;

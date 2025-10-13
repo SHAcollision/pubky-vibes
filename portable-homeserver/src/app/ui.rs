@@ -1,10 +1,12 @@
-use std::sync::LazyLock;
+use std::{sync::LazyLock, time::Instant};
 
 use dioxus::events::{FormEvent, MouseEvent};
-use dioxus::prelude::*;
+use dioxus::prelude::{spawn, *};
 use dioxus::signals::{Signal, SyncStorage};
 use pubky_homeserver::SignupMode;
+use tokio::time::{Duration, sleep};
 
+use super::admin::{self, AdminInfo};
 use super::config::{
     ConfigFeedback, ConfigForm, ConfigState, config_state_from_dir, default_data_dir,
     load_config_form_from_dir, modify_config_form, persist_config_form,
@@ -13,6 +15,277 @@ use super::state::{NetworkProfile, RunningServer, ServerStatus, resolve_start_sp
 use super::status::{StatusCopy, StatusDetails, status_copy, status_details};
 use super::style::{LOGO_DATA_URI, STYLE};
 use super::tasks::{spawn_start_task, stop_current_server};
+
+#[derive(Clone, Debug)]
+enum FetchState<T> {
+    Idle,
+    Loading,
+    Loaded(T),
+    Error(String),
+}
+
+impl<T> Default for FetchState<T> {
+    fn default() -> Self {
+        Self::Idle
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum ActionFeedback {
+    Info(String),
+    Success(String),
+    Error(String),
+}
+
+impl ActionFeedback {
+    fn class(&self) -> &'static str {
+        match self {
+            ActionFeedback::Info(_) => "info",
+            ActionFeedback::Success(_) => "success",
+            ActionFeedback::Error(_) => "error",
+        }
+    }
+
+    fn message(&self) -> &str {
+        match self {
+            ActionFeedback::Info(message)
+            | ActionFeedback::Success(message)
+            | ActionFeedback::Error(message) => message.as_str(),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default)]
+struct DeleteEntryFormState {
+    pubkey: String,
+    entry_path: String,
+    feedback: Option<ActionFeedback>,
+    in_flight: bool,
+}
+
+#[derive(Clone, Debug, Default)]
+struct DisableUserFormState {
+    pubkey: String,
+    feedback: Option<ActionFeedback>,
+    in_flight: bool,
+}
+
+#[derive(Clone, Debug)]
+struct AdminPanelState {
+    password: String,
+    password_initialized: bool,
+    info: FetchState<AdminInfo>,
+    info_refresh_nonce: u64,
+    signup_token: Option<String>,
+    signup_feedback: Option<ActionFeedback>,
+    signup_in_flight: bool,
+    delete_form: DeleteEntryFormState,
+    disable_form: DisableUserFormState,
+}
+
+impl Default for AdminPanelState {
+    fn default() -> Self {
+        Self {
+            password: String::new(),
+            password_initialized: false,
+            info: FetchState::Idle,
+            info_refresh_nonce: 1,
+            signup_token: None,
+            signup_feedback: None,
+            signup_in_flight: false,
+            delete_form: DeleteEntryFormState::default(),
+            disable_form: DisableUserFormState::default(),
+        }
+    }
+}
+
+impl AdminPanelState {
+    fn ensure_password(&mut self, fallback: String) {
+        if !self.password_initialized {
+            self.password = fallback;
+            self.password_initialized = true;
+        }
+    }
+
+    fn bump_info_refresh(&mut self) {
+        self.info_refresh_nonce = self.info_refresh_nonce.wrapping_add(1);
+    }
+}
+
+async fn poll_admin_info(
+    status: Signal<ServerStatus, SyncStorage>,
+    mut admin_state: Signal<AdminPanelState, SyncStorage>,
+) {
+    let mut last_nonce = 0;
+    let mut last_admin_url: Option<String> = None;
+    let mut last_fetch = Instant::now()
+        .checked_sub(Duration::from_secs(60))
+        .unwrap_or_else(Instant::now);
+
+    loop {
+        let status_snapshot = status.read().clone();
+        let (password, nonce) = {
+            let state = admin_state.read();
+            (state.password.clone(), state.info_refresh_nonce)
+        };
+
+        match status_snapshot {
+            ServerStatus::Running(info) => {
+                let admin_url = info.admin_url.clone();
+                let mut should_fetch = false;
+
+                if last_admin_url.as_deref() != Some(admin_url.as_str()) {
+                    should_fetch = true;
+                    last_admin_url = Some(admin_url.clone());
+                }
+
+                if nonce != last_nonce {
+                    should_fetch = true;
+                    last_nonce = nonce;
+                }
+
+                if last_fetch.elapsed() >= Duration::from_secs(30) {
+                    should_fetch = true;
+                }
+
+                if should_fetch {
+                    if password.trim().is_empty() {
+                        {
+                            let mut state = admin_state.write();
+                            state.info = FetchState::Error(
+                                "Provide the admin password to load server stats.".into(),
+                            );
+                        }
+                        last_fetch = Instant::now();
+                    } else {
+                        {
+                            let mut state = admin_state.write();
+                            state.info = FetchState::Loading;
+                        }
+
+                        let result = admin::fetch_info(&admin_url, &password).await;
+                        match result {
+                            Ok(info) => {
+                                let mut state = admin_state.write();
+                                state.info = FetchState::Loaded(info);
+                            }
+                            Err(err) => {
+                                let mut state = admin_state.write();
+                                state.info = FetchState::Error(format!(
+                                    "Failed to load server stats: {}",
+                                    err
+                                ));
+                            }
+                        }
+
+                        last_fetch = Instant::now();
+                    }
+                }
+            }
+            _ => {
+                if last_admin_url.take().is_some() {
+                    let mut state = admin_state.write();
+                    state.info = FetchState::Idle;
+                }
+                last_fetch = Instant::now()
+                    .checked_sub(Duration::from_secs(60))
+                    .unwrap_or_else(Instant::now);
+                last_nonce = 0;
+            }
+        }
+
+        sleep(Duration::from_secs(1)).await;
+    }
+}
+
+fn sanitize_entry_target(pubkey: &str, entry_path: &str) -> Result<String, String> {
+    let trimmed_pubkey = pubkey.trim();
+    if trimmed_pubkey.is_empty() {
+        return Err("Enter the tenant pubkey.".into());
+    }
+
+    let trimmed_path = entry_path.trim();
+    if trimmed_path.is_empty() {
+        return Err("Enter the entry path to delete.".into());
+    }
+
+    let sanitized = trimmed_path.trim_start_matches('/');
+    if !sanitized.starts_with("pub/") {
+        return Err("Entry path must begin with /pub/.".into());
+    }
+
+    Ok(format!("{}/{}", trimmed_pubkey, sanitized))
+}
+
+fn toggle_user_access(
+    status: Signal<ServerStatus, SyncStorage>,
+    mut admin_state: Signal<AdminPanelState, SyncStorage>,
+    disable: bool,
+) {
+    let status_snapshot = status.read().clone();
+    if let ServerStatus::Running(info) = status_snapshot {
+        let admin_url = info.admin_url.clone();
+        let (password, pubkey) = {
+            let state = admin_state.read();
+            (state.password.clone(), state.disable_form.pubkey.clone())
+        };
+
+        if password.trim().is_empty() {
+            let mut state = admin_state.write();
+            state.disable_form.feedback = Some(ActionFeedback::Error(
+                "Provide the admin password to change user access.".into(),
+            ));
+            return;
+        }
+
+        if pubkey.trim().is_empty() {
+            let mut state = admin_state.write();
+            state.disable_form.feedback =
+                Some(ActionFeedback::Error("Enter the user pubkey.".into()));
+            return;
+        }
+
+        {
+            let mut state = admin_state.write();
+            state.disable_form.in_flight = true;
+            let action_copy = if disable {
+                "Disabling user…"
+            } else {
+                "Enabling user…"
+            };
+            state.disable_form.feedback = Some(ActionFeedback::Info(action_copy.into()));
+        }
+
+        let mut admin_state_task = admin_state.clone();
+        spawn(async move {
+            let result = admin::toggle_user_disabled(&admin_url, &password, &pubkey, disable).await;
+            let mut state = admin_state_task.write();
+            state.disable_form.in_flight = false;
+            match result {
+                Ok(()) => {
+                    let success_copy = if disable {
+                        "User disabled.".to_string()
+                    } else {
+                        "User enabled.".to_string()
+                    };
+                    state.disable_form.feedback = Some(ActionFeedback::Success(success_copy));
+                    state.bump_info_refresh();
+                }
+                Err(err) => {
+                    state.disable_form.feedback = Some(ActionFeedback::Error(format!(
+                        "Failed to update user: {}",
+                        err
+                    )));
+                }
+            }
+        });
+    } else {
+        let mut state = admin_state.write();
+        state.disable_form.feedback = Some(ActionFeedback::Error(
+            "Start the homeserver to change user access.".into(),
+        ));
+    }
+}
 
 #[component]
 pub fn App() -> Element {
@@ -25,22 +298,374 @@ pub fn App() -> Element {
     let network = use_signal_sync(|| NetworkProfile::Mainnet);
     let config_state = use_signal_sync(|| initial_config_state.clone());
 
+    let status_for_admin = status.clone();
+    let config_for_admin = config_state.clone();
+
     let status_snapshot = status.read().clone();
     let data_dir_snapshot = data_dir.read().clone();
 
     rsx! {
         style { "{STYLE}" }
         main { class: "app",
+            AdminPanel { status: status_for_admin, config_state: config_for_admin }
             Hero {}
             ControlsPanel {
-                data_dir,
-                network,
-                config_state,
-                status,
-                running_server
+                data_dir: data_dir.clone(),
+                network: network.clone(),
+                config_state: config_state.clone(),
+                status: status.clone(),
+                running_server: running_server.clone()
             }
             StatusPanel { status: status_snapshot }
             FooterNotes { data_dir: data_dir_snapshot }
+        }
+    }
+}
+
+#[component]
+fn AdminPanel(
+    status: Signal<ServerStatus, SyncStorage>,
+    config_state: Signal<ConfigState, SyncStorage>,
+) -> Element {
+    let mut admin_state = use_signal_sync(AdminPanelState::default);
+
+    let config_password = {
+        let guard = config_state.read();
+        guard.form.admin_password.clone()
+    };
+    {
+        let mut state = admin_state.write();
+        state.ensure_password(config_password.clone());
+    }
+
+    let mut poller_started = use_signal_sync(|| false);
+    if !*poller_started.read() {
+        *poller_started.write() = true;
+        let status_for_task = status.clone();
+        let admin_state_for_task = admin_state.clone();
+        spawn(async move {
+            poll_admin_info(status_for_task, admin_state_for_task).await;
+        });
+    }
+
+    let status_snapshot = status.read().clone();
+    let admin_snapshot = admin_state.read().clone();
+
+    let info_section = match &admin_snapshot.info {
+        FetchState::Idle => match status_snapshot {
+            ServerStatus::Running(_) => rsx! {
+                div { class: "admin-info-message", "Waiting for the first stats update…" }
+            },
+            _ => {
+                rsx! { div { class: "admin-info-message", "Start the homeserver to see live stats." } }
+            }
+        },
+        FetchState::Loading => {
+            rsx! { div { class: "admin-info-message", "Loading homeserver stats…" } }
+        }
+        FetchState::Loaded(info) => {
+            let disabled_hint = if info.num_disabled_users > 0 {
+                format!("{} disabled", info.num_disabled_users)
+            } else {
+                "All active".to_string()
+            };
+            let unused_hint = if info.num_unused_signup_codes > 0 {
+                format!("{} unused", info.num_unused_signup_codes)
+            } else {
+                "None unused".to_string()
+            };
+            let disk_used = format!("{:.1} MB", info.total_disk_used_mb);
+
+            rsx! {
+                div { class: "admin-metrics-grid",
+                    div { class: "admin-metric",
+                        span { class: "metric-label", "Users" }
+                        span { class: "metric-value", "{info.num_users}" }
+                        span { class: "metric-hint", "{disabled_hint}" }
+                    }
+                    div { class: "admin-metric",
+                        span { class: "metric-label", "Disk used" }
+                        span { class: "metric-value", "{disk_used}" }
+                        span { class: "metric-hint", "Includes all tenants" }
+                    }
+                    div { class: "admin-metric",
+                        span { class: "metric-label", "Signup codes" }
+                        span { class: "metric-value", "{info.num_signup_codes}" }
+                        span { class: "metric-hint", "{unused_hint}" }
+                    }
+                }
+            }
+        }
+        FetchState::Error(message) => {
+            rsx! { div { class: "admin-feedback error", "{message}" } }
+        }
+    };
+
+    let mut admin_state_for_password = admin_state.clone();
+    let on_password_change = move |evt: FormEvent| {
+        let mut state = admin_state_for_password.write();
+        state.password = evt.value();
+    };
+
+    let mut admin_state_for_use_config = admin_state.clone();
+    let config_state_for_use = config_state.clone();
+    let on_use_config_password = move |_| {
+        let fallback = {
+            let guard = config_state_for_use.read();
+            guard.form.admin_password.clone()
+        };
+        let mut state = admin_state_for_use_config.write();
+        state.password = fallback;
+        state.bump_info_refresh();
+    };
+
+    let mut admin_state_for_refresh = admin_state.clone();
+    let on_refresh_info = move |_| {
+        let mut state = admin_state_for_refresh.write();
+        state.bump_info_refresh();
+    };
+
+    let status_for_token = status.clone();
+    let mut admin_state_for_token = admin_state.clone();
+    let on_generate_token = move |_| {
+        let status_snapshot = status_for_token.read().clone();
+        if let ServerStatus::Running(info) = status_snapshot {
+            let admin_url = info.admin_url.clone();
+            let password = {
+                let state = admin_state_for_token.read();
+                state.password.clone()
+            };
+
+            if password.trim().is_empty() {
+                let mut state = admin_state_for_token.write();
+                state.signup_feedback = Some(ActionFeedback::Error(
+                    "Provide the admin password to generate a signup token.".into(),
+                ));
+                return;
+            }
+
+            {
+                let mut state = admin_state_for_token.write();
+                state.signup_in_flight = true;
+                state.signup_feedback = Some(ActionFeedback::Info(
+                    "Requesting a new signup token…".into(),
+                ));
+                state.signup_token = None;
+            }
+
+            let mut admin_state_task = admin_state_for_token.clone();
+            spawn(async move {
+                let result = admin::generate_signup_token(&admin_url, &password).await;
+                let mut state = admin_state_task.write();
+                match result {
+                    Ok(token) => {
+                        state.signup_in_flight = false;
+                        state.signup_token = Some(token);
+                        state.signup_feedback =
+                            Some(ActionFeedback::Success("Generated a signup token.".into()));
+                        state.bump_info_refresh();
+                    }
+                    Err(err) => {
+                        state.signup_in_flight = false;
+                        state.signup_feedback = Some(ActionFeedback::Error(format!(
+                            "Failed to generate token: {}",
+                            err
+                        )));
+                    }
+                }
+            });
+        } else {
+            let mut state = admin_state_for_token.write();
+            state.signup_feedback = Some(ActionFeedback::Error(
+                "Start the homeserver to create signup tokens.".into(),
+            ));
+        }
+    };
+
+    let status_for_delete = status.clone();
+    let mut admin_state_for_delete = admin_state.clone();
+    let on_delete_entry = move |_| {
+        let status_snapshot = status_for_delete.read().clone();
+        if let ServerStatus::Running(info) = status_snapshot {
+            let admin_url = info.admin_url.clone();
+            let (password, pubkey, entry_path) = {
+                let state = admin_state_for_delete.read();
+                (
+                    state.password.clone(),
+                    state.delete_form.pubkey.clone(),
+                    state.delete_form.entry_path.clone(),
+                )
+            };
+
+            if password.trim().is_empty() {
+                let mut state = admin_state_for_delete.write();
+                state.delete_form.feedback = Some(ActionFeedback::Error(
+                    "Provide the admin password to delete an entry.".into(),
+                ));
+                return;
+            }
+
+            let target = match sanitize_entry_target(&pubkey, &entry_path) {
+                Ok(target) => target,
+                Err(message) => {
+                    let mut state = admin_state_for_delete.write();
+                    state.delete_form.feedback = Some(ActionFeedback::Error(message));
+                    return;
+                }
+            };
+
+            {
+                let mut state = admin_state_for_delete.write();
+                state.delete_form.in_flight = true;
+                state.delete_form.feedback = Some(ActionFeedback::Info("Deleting entry…".into()));
+            }
+
+            let mut admin_state_task = admin_state_for_delete.clone();
+            spawn(async move {
+                let result = admin::delete_entry(&admin_url, &password, &target).await;
+                let mut state = admin_state_task.write();
+                state.delete_form.in_flight = false;
+                match result {
+                    Ok(()) => {
+                        state.delete_form.feedback =
+                            Some(ActionFeedback::Success("Entry deleted.".into()));
+                        state.bump_info_refresh();
+                    }
+                    Err(err) => {
+                        state.delete_form.feedback = Some(ActionFeedback::Error(format!(
+                            "Failed to delete entry: {}",
+                            err
+                        )));
+                    }
+                }
+            });
+        } else {
+            let mut state = admin_state_for_delete.write();
+            state.delete_form.feedback = Some(ActionFeedback::Error(
+                "Start the homeserver to delete entries.".into(),
+            ));
+        }
+    };
+
+    let on_disable_user = {
+        let status = status.clone();
+        let admin_state = admin_state.clone();
+        move |_| toggle_user_access(status.clone(), admin_state.clone(), true)
+    };
+    let on_enable_user = {
+        let status = status.clone();
+        let admin_state = admin_state.clone();
+        move |_| toggle_user_access(status.clone(), admin_state.clone(), false)
+    };
+
+    let mut admin_state_for_delete_pubkey = admin_state.clone();
+    let mut admin_state_for_delete_path = admin_state.clone();
+    let mut admin_state_for_disable_pubkey = admin_state.clone();
+
+    rsx! {
+        section { class: "admin-panel",
+            div { class: "admin-panel-header",
+                div { class: "admin-panel-heading",
+                    h2 { "Admin tools" }
+                    p { "Monitor your homeserver and perform maintenance tasks while it's running." }
+                }
+                div { class: "admin-panel-buttons",
+                    button { class: "secondary", onclick: on_refresh_info, "Refresh stats" }
+                }
+            }
+            div { class: "admin-card admin-stats-card",
+                h3 { "Homeserver stats" }
+                {info_section}
+            }
+            div { class: "admin-actions-grid",
+                div { class: "admin-card",
+                    h3 { "Credentials & tokens" }
+                    p { "Use your admin password to authenticate API requests." }
+                    label { "Admin password" }
+                    input {
+                        r#type: "password",
+                        value: "{admin_snapshot.password}",
+                        oninput: on_password_change,
+                        placeholder: "Configured in config.toml",
+                    }
+                    div { class: "button-row",
+                        button { class: "secondary", onclick: on_use_config_password, "Use config value" }
+                        button { class: "action", onclick: on_generate_token, disabled: admin_snapshot.signup_in_flight, "Gen signup token" }
+                    }
+                    if let Some(feedback) = admin_snapshot.signup_feedback.clone() {
+                        div { class: "admin-feedback {feedback.class()}", "{feedback.message()}" }
+                    }
+                    if let Some(token) = admin_snapshot.signup_token.clone() {
+                        pre { class: "token-display", "{token}" }
+                    }
+                }
+                div { class: "admin-card",
+                    h3 { "Delete entry" }
+                    p { "Remove a file or directory stored under a user's /pub drive." }
+                    label { "Tenant pubkey" }
+                    input {
+                        r#type: "text",
+                        value: "{admin_snapshot.delete_form.pubkey}",
+                        oninput: move |evt: FormEvent| {
+                            let mut state = admin_state_for_delete_pubkey.write();
+                            state.delete_form.pubkey = evt.value();
+                        },
+                        placeholder: "pk...",
+                    }
+                    label { "Entry path" }
+                    input {
+                        r#type: "text",
+                        value: "{admin_snapshot.delete_form.entry_path}",
+                        oninput: move |evt: FormEvent| {
+                            let mut state = admin_state_for_delete_path.write();
+                            state.delete_form.entry_path = evt.value();
+                        },
+                        placeholder: "/pub/path/to/file.txt",
+                    }
+                    div { class: "button-row",
+                        button {
+                            class: "action",
+                            onclick: on_delete_entry,
+                            disabled: admin_snapshot.delete_form.in_flight,
+                            "Delete entry"
+                        }
+                    }
+                    if let Some(feedback) = admin_snapshot.delete_form.feedback.clone() {
+                        div { class: "admin-feedback {feedback.class()}", "{feedback.message()}" }
+                    }
+                }
+                div { class: "admin-card",
+                    h3 { "User access" }
+                    p { "Disable or enable a user's homeserver access." }
+                    label { "Tenant pubkey" }
+                    input {
+                        r#type: "text",
+                        value: "{admin_snapshot.disable_form.pubkey}",
+                        oninput: move |evt: FormEvent| {
+                            let mut state = admin_state_for_disable_pubkey.write();
+                            state.disable_form.pubkey = evt.value();
+                        },
+                        placeholder: "pk...",
+                    }
+                    div { class: "button-row",
+                        button {
+                            class: "secondary",
+                            onclick: on_disable_user,
+                            disabled: admin_snapshot.disable_form.in_flight,
+                            "Disable user"
+                        }
+                        button {
+                            class: "secondary",
+                            onclick: on_enable_user,
+                            disabled: admin_snapshot.disable_form.in_flight,
+                            "Enable user"
+                        }
+                    }
+                    if let Some(feedback) = admin_snapshot.disable_form.feedback.clone() {
+                        div { class: "admin-feedback {feedback.class()}", "{feedback.message()}" }
+                    }
+                }
+            }
         }
     }
 }

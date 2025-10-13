@@ -1,3 +1,4 @@
+mod admin;
 mod bootstrap;
 mod config;
 mod state;

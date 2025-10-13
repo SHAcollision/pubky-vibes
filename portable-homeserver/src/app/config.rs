@@ -11,6 +11,9 @@ use dioxus::signals::{Signal, SignalData, Storage};
 use directories::ProjectDirs;
 use pubky_homeserver::{ConfigToml, Domain, LoggingToml, SignupMode};
 
+#[cfg(target_os = "android")]
+use super::android_fs;
+
 /// Shape of the editable configuration exposed in the UI form.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct ConfigForm {
@@ -202,6 +205,13 @@ where
 }
 
 pub(crate) fn default_data_dir() -> String {
+    #[cfg(target_os = "android")]
+    {
+        if let Ok(dir) = android_fs::default_data_dir() {
+            return dir;
+        }
+    }
+
     if let Some(project_dirs) = ProjectDirs::from("io", "Pubky", "PortableHomeserver") {
         project_dirs.data_dir().to_string_lossy().into_owned()
     } else {

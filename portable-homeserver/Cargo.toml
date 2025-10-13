@@ -26,3 +26,5 @@ dioxus-desktop = "0.7.0-rc.1"
 
 [target.'cfg(target_os = "android")'.dependencies]
 dioxus = { version = "0.7.0-rc.1", features = ["mobile"] }
+jni = "0.21"
+ndk-context = "0.1"

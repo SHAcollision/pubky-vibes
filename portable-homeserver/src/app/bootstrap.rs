@@ -5,6 +5,9 @@ use anyhow::Result;
 #[cfg(not(target_os = "android"))]
 use dioxus_desktop::{Config, WindowBuilder};
 
+#[cfg(target_os = "android")]
+use tracing::error;
+
 #[cfg(not(target_os = "android"))]
 pub fn launch_desktop() -> Result<()> {
     LaunchBuilder::desktop()
@@ -18,5 +21,9 @@ pub fn launch_desktop() -> Result<()> {
 
 #[cfg(target_os = "android")]
 pub fn launch_mobile() {
+    if let Err(err) = super::android_fs::prepare_storage() {
+        error!(?err, "failed to prepare Android storage");
+    }
+
     LaunchBuilder::mobile().launch(super::App);
 }

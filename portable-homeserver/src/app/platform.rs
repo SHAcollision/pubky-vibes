@@ -8,6 +8,11 @@ pub(super) struct PlatformPaths {
 
 static PATHS: OnceLock<PlatformPaths> = OnceLock::new();
 
+#[cfg_attr(not(target_os = "android"), allow(dead_code))]
+pub(super) fn ensure_initialized() {
+    let _ = paths();
+}
+
 pub(super) fn paths() -> &'static PlatformPaths {
     PATHS.get_or_init(|| {
         let paths = platform_paths();
@@ -111,5 +116,12 @@ fn configure_android_environment(paths: &PlatformPaths) {
         return;
     }
 
-    std::env::set_var("TMPDIR", temp_dir.as_os_str());
+    // SAFETY: On Android, modifying process environment variables is only safe
+    // before other threads start interacting with the environment. The Android
+    // launcher calls into [`ensure_initialized`] from the main thread before the
+    // rest of the app boots, ensuring this runs during single-threaded
+    // initialization.
+    unsafe {
+        std::env::set_var("TMPDIR", temp_dir.as_os_str());
+    }
 }

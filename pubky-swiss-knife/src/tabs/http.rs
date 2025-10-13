@@ -9,7 +9,7 @@ use crate::app::NetworkMode;
 use crate::tabs::HttpTabState;
 use crate::utils::http::format_response;
 use crate::utils::logging::ActivityLog;
-use crate::utils::mobile::{IS_ANDROID, touch_copy_option, touch_tooltip};
+use crate::utils::mobile::{is_android_touch, touch_copy_option, touch_tooltip};
 
 pub fn render_http_tab(
     network_mode: Signal<NetworkMode>,
@@ -34,7 +34,7 @@ pub fn render_http_tab(
     } else {
         Some(response_value.clone())
     };
-    let response_copy_success = if IS_ANDROID {
+    let response_copy_success = if is_android_touch() {
         Some(String::from("Copied HTTP response to clipboard"))
     } else {
         None

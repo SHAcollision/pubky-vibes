@@ -361,6 +361,8 @@ button.secondary {
 body.android-touch {
     -webkit-user-select: none;
     user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 body.android-touch input[type="text"],
@@ -450,6 +452,19 @@ body.android-touch .copyable-inline::after {
 .touch-tooltip.visible {
     opacity: 1;
     transform: translate(-50%, -12px) scale(1);
+}
+
+.touch-tooltip.below {
+    transform: translate(-50%, 6px) scale(0.95);
+}
+
+.touch-tooltip.below.visible {
+    transform: translate(-50%, 12px) scale(1);
+}
+
+.touch-tooltip.below::after {
+    top: -8px;
+    bottom: auto;
 }
 
 .touch-toast {

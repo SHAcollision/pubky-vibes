@@ -2,11 +2,25 @@
   if (window.__pubkyMobileEnhancements) {
     return;
   }
+  const navigatorUA = (navigator && navigator.userAgent) || '';
+  const isAndroid = /android/i.test(navigatorUA);
+  const hasTouch =
+    'ontouchstart' in window ||
+    (navigator && (navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0));
+
+  if (!isAndroid || !hasTouch) {
+    return;
+  }
+
   window.__pubkyMobileEnhancements = true;
 
   const LONG_PRESS_MS = 550;
+  const TOOLTIP_OFFSET_PX = 28;
+  const TOOLTIP_VISIBLE_MS = 2600;
+  const TOOLTIP_VIEWPORT_PADDING = 12;
   let longPressTimer = null;
   let activeTarget = null;
+  let pendingTarget = null;
   let tooltipHideTimer = null;
   let toastTimer = null;
 
@@ -37,11 +51,15 @@
     ensureMounted();
   }
 
-  function clearTooltipTimers() {
+  function clearLongPressTimer() {
     if (longPressTimer !== null) {
       clearTimeout(longPressTimer);
       longPressTimer = null;
     }
+    pendingTarget = null;
+  }
+
+  function clearHideTimer() {
     if (tooltipHideTimer !== null) {
       clearTimeout(tooltipHideTimer);
       tooltipHideTimer = null;
@@ -49,38 +67,81 @@
   }
 
   function hideTooltip() {
+    clearHideTimer();
     tooltip.classList.remove('visible');
+    tooltip.classList.remove('below');
     tooltip.removeAttribute('style');
     tooltip.textContent = '';
     activeTarget = null;
+    pendingTarget = null;
   }
 
   function showTooltip(target, text, x, y) {
     ensureMounted();
+    clearHideTimer();
     tooltip.textContent = text;
+
+    tooltip.classList.remove('visible');
+    tooltip.classList.remove('below');
+    tooltip.style.visibility = 'hidden';
     tooltip.style.left = `${Math.round(x)}px`;
-    tooltip.style.top = `${Math.round(y - 12)}px`;
+    tooltip.style.top = `${Math.round(y)}px`;
+    tooltip.classList.add('visible');
+
+    const tooltipRect = tooltip.getBoundingClientRect();
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+    let showBelow = false;
+    let top = y - TOOLTIP_OFFSET_PX - tooltipRect.height;
+
+    if (top < TOOLTIP_VIEWPORT_PADDING) {
+      showBelow = true;
+      top = y + TOOLTIP_OFFSET_PX;
+    } else if (top + tooltipRect.height > viewportHeight - TOOLTIP_VIEWPORT_PADDING) {
+      top = Math.max(
+        TOOLTIP_VIEWPORT_PADDING,
+        viewportHeight - tooltipRect.height - TOOLTIP_VIEWPORT_PADDING
+      );
+    }
+
+    if (showBelow && top + tooltipRect.height > viewportHeight - TOOLTIP_VIEWPORT_PADDING) {
+      showBelow = false;
+      top = Math.max(
+        TOOLTIP_VIEWPORT_PADDING,
+        y - TOOLTIP_OFFSET_PX - tooltipRect.height
+      );
+    }
+
+    tooltip.classList.toggle('below', showBelow);
+    tooltip.style.left = `${Math.round(x)}px`;
+    tooltip.style.top = `${Math.round(top)}px`;
+    tooltip.style.visibility = '';
     tooltip.classList.add('visible');
     tooltipHideTimer = window.setTimeout(() => {
-      tooltip.classList.remove('visible');
-    }, 2000);
+      hideTooltip();
+    }, TOOLTIP_VISIBLE_MS);
     activeTarget = target;
   }
 
   function scheduleTooltip(event, target, text) {
-    clearTooltipTimers();
+    clearLongPressTimer();
     const touch = event.touches && event.touches[0];
     if (!touch) {
       return;
     }
+    const { clientX: x, clientY: y } = touch;
+    pendingTarget = target;
     longPressTimer = window.setTimeout(() => {
-      showTooltip(target, text, touch.clientX, touch.clientY);
+      longPressTimer = null;
+      pendingTarget = null;
+      showTooltip(target, text, x, y);
     }, LONG_PRESS_MS);
   }
 
-  function cancelTooltip() {
-    clearTooltipTimers();
-    hideTooltip();
+  function cancelTooltip(immediate = true) {
+    clearLongPressTimer();
+    if (immediate) {
+      hideTooltip();
+    }
   }
 
   document.addEventListener(
@@ -93,7 +154,14 @@
       }
       const text = target.getAttribute('data-touch-tooltip');
       if (!text) {
+        cancelTooltip();
         return;
+      }
+      if (
+        (activeTarget && activeTarget !== target) ||
+        (pendingTarget && pendingTarget !== target)
+      ) {
+        cancelTooltip();
       }
       scheduleTooltip(event, target, text);
     },
@@ -103,19 +171,40 @@
   document.addEventListener(
     'touchmove',
     (event) => {
-      if (!activeTarget && longPressTimer === null) {
+      if (!activeTarget && pendingTarget === null) {
         return;
       }
       const current = event.target.closest('[data-touch-tooltip]');
-      if (!current || current !== activeTarget) {
+      if (!current) {
+        cancelTooltip();
+        return;
+      }
+      if ((activeTarget && current !== activeTarget) || (pendingTarget && current !== pendingTarget)) {
         cancelTooltip();
       }
     },
     { passive: true }
   );
 
-  document.addEventListener('touchend', cancelTooltip, { passive: true });
-  document.addEventListener('touchcancel', cancelTooltip, { passive: true });
+  document.addEventListener(
+    'touchend',
+    () => {
+      cancelTooltip(false);
+    },
+    { passive: true }
+  );
+  document.addEventListener(
+    'touchcancel',
+    () => {
+      cancelTooltip();
+    },
+    { passive: true }
+  );
+  document.addEventListener('contextmenu', (event) => {
+    if (event.target.closest('[data-touch-tooltip]')) {
+      event.preventDefault();
+    }
+  });
 
   function showToast(message) {
     ensureMounted();

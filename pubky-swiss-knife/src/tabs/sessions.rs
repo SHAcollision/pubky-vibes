@@ -4,7 +4,7 @@ use pubky::PublicKey;
 
 use crate::tabs::{SessionsTabState, format_session_info};
 use crate::utils::logging::ActivityLog;
-use crate::utils::mobile::{IS_ANDROID, touch_copy_option, touch_tooltip};
+use crate::utils::mobile::{is_android_touch, touch_copy_option, touch_tooltip};
 use crate::utils::pubky::PubkyFacadeHandle;
 
 #[allow(clippy::clone_on_copy)]
@@ -29,7 +29,7 @@ pub fn render_sessions_tab(
     } else {
         Some(details_value.clone())
     };
-    let details_copy_success = if IS_ANDROID {
+    let details_copy_success = if is_android_touch() {
         Some(String::from("Copied session details to clipboard"))
     } else {
         None

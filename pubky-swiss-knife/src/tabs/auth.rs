@@ -7,7 +7,7 @@ use url::Url;
 use crate::tabs::{AuthTabState, format_session_info};
 use crate::utils::links::open_pubkyauth_link;
 use crate::utils::logging::ActivityLog;
-use crate::utils::mobile::{IS_ANDROID, touch_copy_option, touch_tooltip};
+use crate::utils::mobile::{is_android_touch, touch_copy_option, touch_tooltip};
 use crate::utils::pubky::PubkyFacadeHandle;
 use crate::utils::qr::generate_qr_data_url;
 
@@ -53,7 +53,7 @@ pub fn render_auth_tab(
         Some(url_value.clone())
     };
     let status_value = { status.read().clone() };
-    let link_copy_success = if IS_ANDROID {
+    let link_copy_success = if is_android_touch() {
         Some(String::from("Copied pubkyauth link to clipboard"))
     } else {
         None

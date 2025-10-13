@@ -65,6 +65,7 @@ mod desktop {
 #[cfg(target_os = "android")]
 mod android {
     use super::{PlatformPaths, fallback_data_dir};
+    use ndk::ffi::ANativeActivity;
     use ndk::native_activity::NativeActivity;
     use ndk_context::android_context;
     use std::path::PathBuf;
@@ -92,7 +93,7 @@ mod android {
             return None;
         }
 
-        let activity_ptr = NonNull::new(raw_ptr.cast::<ndk_sys::ANativeActivity>())?;
+        let activity_ptr = NonNull::new(raw_ptr.cast::<ANativeActivity>())?;
         let activity = unsafe { NativeActivity::from_ptr(activity_ptr) };
         Some(activity.internal_data_path().to_path_buf())
     }

@@ -51,3 +51,24 @@ This is intentionally small so teams can iterate quickly during hackathons: reus
 ## Cross-platform builds
 
 Follow the [cross-building guide](../docs/cross-building.md) for end-to-end instructions on producing Linux, Windows, and macOS binaries from an Ubuntu host (the same process the CI pipeline runs).
+
+## Android build
+
+The Android target reuses the exact same UI tree as the desktop application so every control and workflow remains available on mobile. To bundle the APK locally:
+
+1. Install the Android Rust targets and the mobile toolchain prerequisites. The [android plan](docs/android-plan.md) pins the SDK components, NDK version (25.2.9519653), and environment variables that match CI.
+2. Install the Dioxus CLI (`cargo install dioxus-cli --version 0.7.0-rc.1`), the release-candidate bundle that supports the 0.7.0 mobile tooling.
+3. Bundle the project and generate the Gradle wrapper:
+
+   ```bash
+   dx bundle --android --release
+   ```
+
+4. Assemble the release APK with Gradle:
+
+   ```bash
+   cd target/dx/portable-homeserver/release/android/app
+   ./gradlew assembleRelease --console=plain
+   ```
+
+Ensure `ANDROID_HOME`, `ANDROID_SDK_ROOT`, and `NDK_HOME` point to the toolchain installed in step 1 before invoking Gradle. The unsigned release build is available under `app/build/outputs/apk/release/`. CI signs the APK with the debug keystore and uploads it as a workflow artifact.

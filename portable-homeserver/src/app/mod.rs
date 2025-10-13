@@ -6,4 +6,10 @@ mod style;
 mod tasks;
 mod ui;
 
-pub use bootstrap::launch;
+#[cfg(not(target_os = "android"))]
+pub use bootstrap::launch_desktop;
+
+#[cfg(target_os = "android")]
+pub use bootstrap::launch_mobile;
+
+pub use ui::App;

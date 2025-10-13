@@ -1,0 +1,11 @@
+[application]
+out_dir = "dist"
+android_min_sdk_version = 24
+
+[web.app]
+title = "Portable Pubky Homeserver"
+
+[bundle]
+identifier = "org.pubky.homeserver"
+publisher = "Pubky"
+short_description = "Graphical launcher for the Pubky homeserver"

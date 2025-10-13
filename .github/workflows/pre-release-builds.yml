@@ -7,11 +7,20 @@ permissions:
   contents: write
 
 jobs:
-  android-apk:
+  swiss-knife-android:
     uses: ./.github/workflows/android-apk.yml
+    with:
+      app-directory: pubky-swiss-knife
+
+  homeserver-android:
+    uses: ./.github/workflows/android-apk.yml
+    with:
+      app-directory: portable-homeserver
 
   build-and-release:
-    needs: android-apk
+    needs:
+      - swiss-knife-android
+      - homeserver-android
     runs-on: ubuntu-latest
     env:
       CARGO_TERM_COLOR: always
@@ -94,11 +103,23 @@ jobs:
           done
           ls -lh dist
 
-      - name: Download Android APK artifact
+      - name: Download Pubky Swiss Knife APK artifact
         uses: actions/download-artifact@v4
         with:
           name: pubky-swiss-knife-apk
-          path: dist
+          path: dist/pubky-swiss-knife
+
+      - name: Download Portable Homeserver APK artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: portable-homeserver-apk
+          path: dist/portable-homeserver
+
+      - name: Rename APK artifacts
+        run: |
+          set -euo pipefail
+          mv dist/pubky-swiss-knife/app-release-signed.apk dist/pubky-swiss-knife.apk
+          mv dist/portable-homeserver/app-release-signed.apk dist/portable-homeserver.apk
 
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v4

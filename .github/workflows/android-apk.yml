@@ -2,7 +2,21 @@ name: android-apk
 
 on:
   workflow_dispatch:
+    inputs:
+      app-directory:
+        description: Select the Dioxus app crate to build
+        required: true
+        type: choice
+        default: pubky-swiss-knife
+        options:
+          - pubky-swiss-knife
+          - portable-homeserver
   workflow_call:
+    inputs:
+      app-directory:
+        required: false
+        type: string
+        default: pubky-swiss-knife
 
 jobs:
   build:
@@ -11,6 +25,8 @@ jobs:
       ANDROID_HOME: ${{ github.workspace }}/android-sdk
       ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
       NDK_VERSION: 25.2.9519653
+      APP_DIR: ${{ inputs.app-directory }}
+      ARTIFACT_NAME: ${{ format('{0}-apk', inputs.app-directory) }}
     steps:
       - uses: actions/checkout@v4
 
@@ -68,7 +84,7 @@ jobs:
           echo "$ANDROID_HOME/ndk/$NDK_VERSION" >> "$GITHUB_PATH"
 
       - name: Build Android bundles for every ABI
-        working-directory: pubky-swiss-knife
+        working-directory: ${{ env.APP_DIR }}
         env:
           ANDROID_TRIPLES: |
             aarch64-linux-android:arm64-v8a
@@ -153,7 +169,7 @@ jobs:
       - name: Locate Android project
         id: locate-android
         run: |
-          GRADLEW_PATH=$(find pubky-swiss-knife/target/dx -maxdepth 6 -type f -name gradlew -print -quit)
+          GRADLEW_PATH=$(find "$APP_DIR/target/dx" -maxdepth 6 -type f -name gradlew -print -quit)
           if [ -z "$GRADLEW_PATH" ]; then
             echo "Unable to find generated Android project" >&2
             exit 1
@@ -222,5 +238,5 @@ jobs:
       - name: Upload release APK
         uses: actions/upload-artifact@v4
         with:
-          name: pubky-swiss-knife-apk
+          name: ${{ env.ARTIFACT_NAME }}
           path: ${{ steps.sign-apk.outputs.apk }}

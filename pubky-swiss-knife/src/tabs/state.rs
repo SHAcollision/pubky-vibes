@@ -26,6 +26,14 @@ pub struct SessionsTabState {
 }
 
 #[derive(Clone)]
+pub struct PkdnsTabState {
+    pub keypair: Signal<Option<Keypair>>,
+    pub lookup_input: Signal<String>,
+    pub lookup_result: Signal<String>,
+    pub host_override: Signal<String>,
+}
+
+#[derive(Clone)]
 pub struct AuthTabState {
     pub keypair: Signal<Option<Keypair>>,
     pub session: Signal<Option<PubkySession>>,

@@ -4,9 +4,9 @@ use pubky::{Keypair, PubkyAuthFlow, PubkySession};
 use crate::components::{NetworkToggleOption, TabButton};
 use crate::style::APP_STYLE;
 use crate::tabs::{
-    AuthTabState, HttpTabState, KeysTabState, SessionsTabState, StorageTabState, TokensTabState,
-    render_auth_tab, render_http_tab, render_keys_tab, render_sessions_tab, render_storage_tab,
-    render_tokens_tab,
+    AuthTabState, HttpTabState, KeysTabState, PkdnsTabState, SessionsTabState, StorageTabState,
+    TokensTabState, render_auth_tab, render_http_tab, render_keys_tab, render_pkdns_tab,
+    render_sessions_tab, render_storage_tab, render_tokens_tab,
 };
 use crate::utils::logging::{ActivityLog, LogEntry};
 use crate::utils::pubky::{PubkyFacadeHandle, PubkyFacadeState, PubkyFacadeStatus};
@@ -33,16 +33,18 @@ pub enum Tab {
     Keys,
     Tokens,
     Sessions,
+    Pkdns,
     Auth,
     Storage,
     Http,
 }
 
 impl Tab {
-    pub const ALL: [Tab; 6] = [
+    pub const ALL: [Tab; 7] = [
         Tab::Keys,
         Tab::Tokens,
         Tab::Sessions,
+        Tab::Pkdns,
         Tab::Auth,
         Tab::Storage,
         Tab::Http,
@@ -53,6 +55,7 @@ impl Tab {
             Tab::Keys => "Keys",
             Tab::Tokens => "Auth Tokens",
             Tab::Sessions => "Sessions",
+            Tab::Pkdns => "PKDNS",
             Tab::Auth => "Auth Flows",
             Tab::Storage => "Storage",
             Tab::Http => "Raw Requests",
@@ -77,6 +80,12 @@ impl Tab {
                 "0 0 24 24",
                 &[
                     r#"M15 19.128a9.38 9.38 0 0 0 2.625.372 9.337 9.337 0 0 0 4.121-.952 4.125 4.125 0 0 0-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 0 1 8.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0 1 11.964-3.07M12 6.375a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0Zm8.25 2.25a2.625 2.625 0 1 1-5.25 0 2.625 2.625 0 0 1 5.25 0Z"#,
+                ],
+            ),
+            Tab::Pkdns => (
+                "0 0 24 24",
+                &[
+                    r#"M6 7.5h12m-12 0A2.25 2.25 0 0 0 3.75 9.75v1.5A2.25 2.25 0 0 0 6 13.5h12a2.25 2.25 0 0 0 2.25-2.25v-1.5A2.25 2.25 0 0 0 18 7.5H6Zm0 6H18m-12 0a2.25 2.25 0 0 0-2.25 2.25v1.5A2.25 2.25 0 0 0 6 19.5h12a2.25 2.25 0 0 0 2.25-2.25v-1.5A2.25 2.25 0 0 0 18 13.5H6Z"#,
                 ],
             ),
             Tab::Auth => (
@@ -136,6 +145,13 @@ pub fn App() -> Element {
         details: session_details.clone(),
         homeserver: use_signal(String::new),
         signup_code: use_signal(String::new),
+    };
+
+    let pkdns_state = PkdnsTabState {
+        keypair: keypair.clone(),
+        lookup_input: use_signal(String::new),
+        lookup_result: use_signal(String::new),
+        host_override: use_signal(String::new),
     };
 
     let auth_state = AuthTabState {
@@ -244,6 +260,11 @@ pub fn App() -> Element {
                         Tab::Sessions => render_sessions_tab(
                             pubky_facade.clone(),
                             sessions_state.clone(),
+                            activity_log.clone(),
+                        ),
+                        Tab::Pkdns => render_pkdns_tab(
+                            pubky_facade.clone(),
+                            pkdns_state.clone(),
                             activity_log.clone(),
                         ),
                         Tab::Auth => render_auth_tab(

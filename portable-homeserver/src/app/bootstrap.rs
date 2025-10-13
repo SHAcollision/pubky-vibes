@@ -1,10 +1,22 @@
-use dioxus::desktop::{Config, WindowBuilder};
-use dioxus::prelude::LaunchBuilder;
+use dioxus::LaunchBuilder;
 
-pub fn launch() {
+#[cfg(not(target_os = "android"))]
+use anyhow::Result;
+#[cfg(not(target_os = "android"))]
+use dioxus_desktop::{Config, WindowBuilder};
+
+#[cfg(not(target_os = "android"))]
+pub fn launch_desktop() -> Result<()> {
     LaunchBuilder::desktop()
         .with_cfg(
             Config::new().with_window(WindowBuilder::new().with_title("Portable Pubky Homeserver")),
         )
-        .launch(super::ui::App);
+        .launch(super::App);
+
+    Ok(())
+}
+
+#[cfg(target_os = "android")]
+pub fn launch_mobile() {
+    LaunchBuilder::mobile().launch(super::App);
 }

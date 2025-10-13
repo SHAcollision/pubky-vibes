@@ -28,3 +28,4 @@ dioxus-desktop = "0.7.0-rc.1"
 dioxus = { version = "0.7.0-rc.1", features = ["mobile"] }
 ndk = "0.9"
 ndk-context = "0.1"
+ndk-sys = "0.6"

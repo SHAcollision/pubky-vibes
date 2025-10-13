@@ -65,9 +65,9 @@ mod desktop {
 #[cfg(target_os = "android")]
 mod android {
     use super::{PlatformPaths, fallback_data_dir};
-    use ndk::ffi::ANativeActivity;
     use ndk::native_activity::NativeActivity;
     use ndk_context::android_context;
+    use ndk_sys::ANativeActivity;
     use std::path::PathBuf;
     use std::ptr::NonNull;
     use tracing::warn;

@@ -109,13 +109,19 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: pubky-swiss-knife-apk
-          path: dist
+          path: dist/pubky-swiss-knife
 
       - name: Download Portable Homeserver APK artifact
         uses: actions/download-artifact@v4
         with:
           name: portable-homeserver-apk
-          path: dist
+          path: dist/portable-homeserver
+
+      - name: Rename APK artifacts
+        run: |
+          set -euo pipefail
+          mv dist/pubky-swiss-knife/app-release-signed.apk dist/pubky-swiss-knife.apk
+          mv dist/portable-homeserver/app-release-signed.apk dist/portable-homeserver.apk
 
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v4

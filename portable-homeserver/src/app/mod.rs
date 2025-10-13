@@ -1,6 +1,6 @@
+mod admin;
 #[cfg(target_os = "android")]
 mod android;
-mod admin;
 mod bootstrap;
 mod config;
 mod state;

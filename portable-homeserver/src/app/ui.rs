@@ -256,7 +256,7 @@ fn toggle_user_access(
             state.disable_form.feedback = Some(ActionFeedback::Info(action_copy.into()));
         }
 
-        let mut admin_state_task = admin_state.clone();
+        let mut admin_state_task = admin_state;
         spawn(async move {
             let result = admin::toggle_user_disabled(&admin_url, &password, &pubkey, disable).await;
             let mut state = admin_state_task.write();
@@ -298,8 +298,8 @@ pub fn App() -> Element {
     let network = use_signal_sync(|| NetworkProfile::Mainnet);
     let config_state = use_signal_sync(|| initial_config_state.clone());
 
-    let status_for_admin = status.clone();
-    let config_for_admin = config_state.clone();
+    let status_for_admin = status;
+    let config_for_admin = config_state;
 
     let status_snapshot = status.read().clone();
     let data_dir_snapshot = data_dir.read().clone();
@@ -310,11 +310,11 @@ pub fn App() -> Element {
             AdminPanel { status: status_for_admin, config_state: config_for_admin }
             Hero {}
             ControlsPanel {
-                data_dir: data_dir.clone(),
-                network: network.clone(),
-                config_state: config_state.clone(),
-                status: status.clone(),
-                running_server: running_server.clone()
+                data_dir: data_dir,
+                network: network,
+                config_state: config_state,
+                status: status,
+                running_server: running_server
             }
             StatusPanel { status: status_snapshot }
             FooterNotes { data_dir: data_dir_snapshot }
@@ -341,8 +341,8 @@ fn AdminPanel(
     let mut poller_started = use_signal_sync(|| false);
     if !*poller_started.read() {
         *poller_started.write() = true;
-        let status_for_task = status.clone();
-        let admin_state_for_task = admin_state.clone();
+        let status_for_task = status;
+        let admin_state_for_task = admin_state;
         spawn(async move {
             poll_admin_info(status_for_task, admin_state_for_task).await;
         });
@@ -401,14 +401,14 @@ fn AdminPanel(
         }
     };
 
-    let mut admin_state_for_password = admin_state.clone();
+    let mut admin_state_for_password = admin_state;
     let on_password_change = move |evt: FormEvent| {
         let mut state = admin_state_for_password.write();
         state.password = evt.value();
     };
 
-    let mut admin_state_for_use_config = admin_state.clone();
-    let config_state_for_use = config_state.clone();
+    let mut admin_state_for_use_config = admin_state;
+    let config_state_for_use = config_state;
     let on_use_config_password = move |_| {
         let fallback = {
             let guard = config_state_for_use.read();
@@ -419,14 +419,14 @@ fn AdminPanel(
         state.bump_info_refresh();
     };
 
-    let mut admin_state_for_refresh = admin_state.clone();
+    let mut admin_state_for_refresh = admin_state;
     let on_refresh_info = move |_| {
         let mut state = admin_state_for_refresh.write();
         state.bump_info_refresh();
     };
 
-    let status_for_token = status.clone();
-    let mut admin_state_for_token = admin_state.clone();
+    let status_for_token = status;
+    let mut admin_state_for_token = admin_state;
     let on_generate_token = move |_| {
         let status_snapshot = status_for_token.read().clone();
         if let ServerStatus::Running(info) = status_snapshot {
@@ -453,7 +453,7 @@ fn AdminPanel(
                 state.signup_token = None;
             }
 
-            let mut admin_state_task = admin_state_for_token.clone();
+            let mut admin_state_task = admin_state_for_token;
             spawn(async move {
                 let result = admin::generate_signup_token(&admin_url, &password).await;
                 let mut state = admin_state_task.write();
@@ -482,8 +482,8 @@ fn AdminPanel(
         }
     };
 
-    let status_for_delete = status.clone();
-    let mut admin_state_for_delete = admin_state.clone();
+    let status_for_delete = status;
+    let mut admin_state_for_delete = admin_state;
     let on_delete_entry = move |_| {
         let status_snapshot = status_for_delete.read().clone();
         if let ServerStatus::Running(info) = status_snapshot {
@@ -520,7 +520,7 @@ fn AdminPanel(
                 state.delete_form.feedback = Some(ActionFeedback::Info("Deleting entry…".into()));
             }
 
-            let mut admin_state_task = admin_state_for_delete.clone();
+            let mut admin_state_task = admin_state_for_delete;
             spawn(async move {
                 let result = admin::delete_entry(&admin_url, &password, &target).await;
                 let mut state = admin_state_task.write();
@@ -548,19 +548,19 @@ fn AdminPanel(
     };
 
     let on_disable_user = {
-        let status = status.clone();
-        let admin_state = admin_state.clone();
-        move |_| toggle_user_access(status.clone(), admin_state.clone(), true)
+        let status = status;
+        let admin_state = admin_state;
+        move |_| toggle_user_access(status, admin_state, true)
     };
     let on_enable_user = {
-        let status = status.clone();
-        let admin_state = admin_state.clone();
-        move |_| toggle_user_access(status.clone(), admin_state.clone(), false)
+        let status = status;
+        let admin_state = admin_state;
+        move |_| toggle_user_access(status, admin_state, false)
     };
 
-    let mut admin_state_for_delete_pubkey = admin_state.clone();
-    let mut admin_state_for_delete_path = admin_state.clone();
-    let mut admin_state_for_disable_pubkey = admin_state.clone();
+    let mut admin_state_for_delete_pubkey = admin_state;
+    let mut admin_state_for_delete_path = admin_state;
+    let mut admin_state_for_disable_pubkey = admin_state;
 
     rsx! {
         section { class: "admin-panel",

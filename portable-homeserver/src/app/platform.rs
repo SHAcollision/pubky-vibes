@@ -68,6 +68,7 @@ mod android {
     use ndk::native_activity::NativeActivity;
     use ndk_context::android_context;
     use std::path::PathBuf;
+    use std::ptr::NonNull;
     use tracing::warn;
 
     pub(super) fn paths() -> PlatformPaths {
@@ -91,8 +92,9 @@ mod android {
             return None;
         }
 
-        let activity = unsafe { NativeActivity::from_ptr(raw_ptr.cast()) };
-        activity.internal_data_path().map(|path| path.to_path_buf())
+        let activity_ptr = NonNull::new(raw_ptr.cast::<ndk_sys::ANativeActivity>())?;
+        let activity = unsafe { NativeActivity::from_ptr(activity_ptr) };
+        Some(activity.internal_data_path().to_path_buf())
     }
 }
 

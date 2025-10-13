@@ -454,6 +454,19 @@ body.android-touch .copyable-inline::after {
     transform: translate(-50%, -12px) scale(1);
 }
 
+.touch-tooltip.below {
+    transform: translate(-50%, 6px) scale(0.95);
+}
+
+.touch-tooltip.below.visible {
+    transform: translate(-50%, 12px) scale(1);
+}
+
+.touch-tooltip.below::after {
+    top: -8px;
+    bottom: auto;
+}
+
 .touch-toast {
     left: 50%;
     bottom: 4.5rem;

@@ -16,11 +16,14 @@ fn is_android_touch_runtime() -> bool {
 
     static IS_ANDROID_TOUCH: OnceLock<bool> = OnceLock::new();
     *IS_ANDROID_TOUCH.get_or_init(|| {
+        use js_sys::Reflect;
+        use wasm_bindgen::JsValue;
         use web_sys::window;
 
         window()
-            .map(|win| win.navigator())
-            .and_then(|navigator| navigator.user_agent().ok())
+            .and_then(|win| Reflect::get(win.as_ref(), &JsValue::from_str("navigator")).ok())
+            .and_then(|navigator| Reflect::get(&navigator, &JsValue::from_str("userAgent")).ok())
+            .and_then(|ua| ua.as_string())
             .map(|ua| ua.to_ascii_lowercase().contains("android"))
             .unwrap_or(false)
     })

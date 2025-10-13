@@ -44,5 +44,5 @@ pub fn MobileEnhancementsScript() -> Element {
 #[cfg(not(target_os = "android"))]
 #[component]
 pub fn MobileEnhancementsScript() -> Element {
-    None
+    rsx! { Fragment {} }
 }

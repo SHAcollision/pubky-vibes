@@ -11,13 +11,11 @@ jobs:
     uses: ./.github/workflows/android-apk.yml
     with:
       app-directory: pubky-swiss-knife
-      artifact-name: pubky-swiss-knife-apk
 
   homeserver-android:
     uses: ./.github/workflows/android-apk.yml
     with:
       app-directory: portable-homeserver
-      artifact-name: portable-homeserver-apk
 
   build-and-release:
     needs:

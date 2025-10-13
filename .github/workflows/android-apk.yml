@@ -9,25 +9,14 @@ on:
         type: choice
         default: pubky-swiss-knife
         options:
-          - label: SwissKnife
-            value: pubky-swiss-knife
-          - label: Homeserver
-            value: portable-homeserver
-      artifact-name:
-        description: Name for the uploaded APK artifact
-        required: false
-        type: string
-        default: pubky-swiss-knife-apk
+          - pubky-swiss-knife
+          - portable-homeserver
   workflow_call:
     inputs:
       app-directory:
         required: false
         type: string
         default: pubky-swiss-knife
-      artifact-name:
-        required: false
-        type: string
-        default: pubky-swiss-knife-apk
 
 jobs:
   build:
@@ -37,7 +26,7 @@ jobs:
       ANDROID_SDK_ROOT: ${{ github.workspace }}/android-sdk
       NDK_VERSION: 25.2.9519653
       APP_DIR: ${{ inputs.app-directory }}
-      ARTIFACT_NAME: ${{ inputs.artifact-name }}
+      ARTIFACT_NAME: ${{ format('{0}-apk', inputs.app-directory) }}
     steps:
       - uses: actions/checkout@v4
 

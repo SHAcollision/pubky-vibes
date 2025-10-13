@@ -8,4 +8,3 @@ jobs:
     uses: ./.github/workflows/android-apk.yml
     with:
       app-directory: portable-homeserver
-      artifact-name: portable-homeserver-apk

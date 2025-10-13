@@ -4,10 +4,15 @@ on:
   workflow_dispatch:
     inputs:
       app-directory:
-        description: Path to the Dioxus app crate
-        required: false
-        type: string
+        description: Select the Dioxus app crate to build
+        required: true
+        type: choice
         default: pubky-swiss-knife
+        options:
+          - label: SwissKnife
+            value: pubky-swiss-knife
+          - label: Homeserver
+            value: portable-homeserver
       artifact-name:
         description: Name for the uploaded APK artifact
         required: false

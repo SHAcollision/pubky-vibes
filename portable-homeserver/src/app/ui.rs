@@ -1,4 +1,4 @@
-use std::{sync::LazyLock, time::Instant};
+use std::time::Instant;
 
 use dioxus::events::{FormEvent, MouseEvent};
 use dioxus::prelude::{spawn, *};
@@ -13,7 +13,7 @@ use super::config::{
 };
 use super::state::{NetworkProfile, RunningServer, ServerStatus, resolve_start_spec};
 use super::status::{StatusCopy, StatusDetails, status_copy, status_details};
-use super::style::{LOGO_DATA_URI, STYLE};
+use super::style::STYLE;
 use super::tasks::{spawn_start_task, stop_current_server};
 
 #[derive(Clone, Debug)]
@@ -362,7 +362,6 @@ pub fn App() -> Element {
     rsx! {
         style { "{STYLE}" }
         main { class: "app",
-            Hero {}
             div { class: "app-shell",
                 div { class: "tab-header",
                     TabNavigation { active_tab: tab_signal }
@@ -1003,24 +1002,6 @@ fn AdminPanel(
                     if let Some(feedback) = admin_snapshot.disable_form.feedback.clone() {
                         div { class: "admin-feedback {feedback.class()}", "{feedback.message()}" }
                     }
-                }
-            }
-        }
-    }
-}
-
-#[component]
-fn Hero() -> Element {
-    rsx! {
-        div { class: "hero",
-            img {
-                src: LazyLock::force(&LOGO_DATA_URI).as_str(),
-                alt: "Pubky logo",
-            }
-            div { class: "hero-content",
-                h1 { "Homeserver" }
-                p {
-                    "Start a Pubky homeserver with a single click. Configure endpoints, save the settings, and keep this window open while your node is online."
                 }
             }
         }

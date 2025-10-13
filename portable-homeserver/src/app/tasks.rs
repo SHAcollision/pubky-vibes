@@ -1,5 +1,8 @@
 use std::sync::Arc;
 
+#[cfg(target_os = "android")]
+use std::{env, fs, path::PathBuf};
+
 use anyhow::{Context, Result};
 use dioxus::prelude::{ReadableExt, WritableExt, spawn};
 use dioxus::signals::{Signal, SignalData, Storage};
@@ -9,6 +12,9 @@ use tokio::time::{Duration, sleep};
 use tracing::error;
 
 use super::state::{NetworkProfile, RunningServer, ServerInfo, ServerStatus, StartSpec};
+
+#[cfg(target_os = "android")]
+use super::config;
 
 /// Stop the currently running homeserver (if any) and transition the UI once the
 /// shutdown completes. Optionally runs a callback after the shutdown finishes or
@@ -133,6 +139,10 @@ async fn start_server(start_spec: StartSpec) -> Result<(RunningServer, ServerInf
             Ok((RunningServer::Mainnet(Arc::new(server)), info))
         }
         StartSpec::Testnet => {
+            #[cfg(target_os = "android")]
+            ensure_android_temp_dir()
+                .context("Failed to prepare temporary storage for Android testnet")?;
+
             let static_net = StaticTestnet::start()
                 .await
                 .context("StaticTestnet::start()")?;
@@ -142,6 +152,39 @@ async fn start_server(start_spec: StartSpec) -> Result<(RunningServer, ServerInf
             Ok((RunningServer::Testnet(Arc::new(static_net)), info))
         }
     }
+}
+
+#[cfg(target_os = "android")]
+fn ensure_android_temp_dir() -> Result<()> {
+    let existing_tmp = env::var_os("TMPDIR")
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from);
+
+    if let Some(path) = existing_tmp {
+        fs::create_dir_all(&path).with_context(|| {
+            format!(
+                "Failed to ensure Android TMPDIR ({}) exists",
+                path.display()
+            )
+        })?;
+        return Ok(());
+    }
+
+    let base_dir = PathBuf::from(config::default_data_dir());
+    let tmp_root = base_dir.join("tmp");
+
+    fs::create_dir_all(&tmp_root).with_context(|| {
+        format!(
+            "Failed to create Android temporary directory at {}",
+            tmp_root.display()
+        )
+    })?;
+
+    for var in ["TMPDIR", "TMP", "TEMP"] {
+        env::set_var(var, &tmp_root);
+    }
+
+    Ok(())
 }
 
 fn server_info_from_suite(suite: &HomeserverSuite, network: NetworkProfile) -> ServerInfo {

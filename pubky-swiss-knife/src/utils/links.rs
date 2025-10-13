@@ -2,8 +2,6 @@ use anyhow::{Context, Result, bail};
 
 #[cfg(target_os = "android")]
 use anyhow::anyhow;
-#[cfg(target_os = "android")]
-use jni::errors::Error as JniError;
 
 /// Attempt to open a pubkyauth:// deep link on the local system.
 ///
@@ -28,23 +26,23 @@ fn open_on_platform(url: &str) -> Result<()> {
 fn open_on_platform(url: &str) -> Result<()> {
     use android_intent::{Intent, with_current_env};
 
-    let mut activity_error: Option<JniError> = None;
+    let mut activity_error: Option<anyhow::Error> = None;
     with_current_env(|jni_env| {
         let error_env = jni_env.clone();
         match Intent::new_with_uri(jni_env, "ACTION_VIEW", url).start_activity() {
             Ok(()) => {}
             Err(err) => {
-                if let JniError::JavaException = &err {
+                if let Ok(true) = error_env.exception_check() {
                     let _ = error_env.exception_describe();
                     let _ = error_env.exception_clear();
                 }
-                activity_error = Some(err);
+                activity_error = Some(anyhow!(err));
             }
         }
     });
 
     if let Some(err) = activity_error {
-        Err(anyhow!(err)).context("failed to hand off pubkyauth link")
+        Err(err).context("failed to hand off pubkyauth link")
     } else {
         Ok(())
     }

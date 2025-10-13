@@ -3,7 +3,7 @@ use dioxus::prelude::*;
 use crate::tabs::StorageTabState;
 use crate::utils::http::format_response;
 use crate::utils::logging::ActivityLog;
-use crate::utils::mobile::{IS_ANDROID, touch_copy_option, touch_tooltip};
+use crate::utils::mobile::{is_android_touch, touch_copy_option, touch_tooltip};
 use crate::utils::pubky::PubkyFacadeHandle;
 
 #[allow(clippy::too_many_arguments, clippy::clone_on_copy)]
@@ -31,7 +31,7 @@ pub fn render_storage_tab(
     } else {
         Some(session_response.clone())
     };
-    let session_copy_success = if IS_ANDROID {
+    let session_copy_success = if is_android_touch() {
         Some(String::from("Copied storage response to clipboard"))
     } else {
         None
@@ -41,7 +41,7 @@ pub fn render_storage_tab(
     } else {
         Some(public_resp.clone())
     };
-    let public_copy_success = if IS_ANDROID {
+    let public_copy_success = if is_android_touch() {
         Some(String::from("Copied public storage response to clipboard"))
     } else {
         None

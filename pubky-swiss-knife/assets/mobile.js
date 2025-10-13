@@ -2,6 +2,16 @@
   if (window.__pubkyMobileEnhancements) {
     return;
   }
+  const navigatorUA = (navigator && navigator.userAgent) || '';
+  const isAndroid = /android/i.test(navigatorUA);
+  const hasTouch =
+    'ontouchstart' in window ||
+    (navigator && (navigator.maxTouchPoints > 0 || navigator.msMaxTouchPoints > 0));
+
+  if (!isAndroid || !hasTouch) {
+    return;
+  }
+
   window.__pubkyMobileEnhancements = true;
 
   const LONG_PRESS_MS = 550;
@@ -116,6 +126,11 @@
 
   document.addEventListener('touchend', cancelTooltip, { passive: true });
   document.addEventListener('touchcancel', cancelTooltip, { passive: true });
+  document.addEventListener('contextmenu', (event) => {
+    if (event.target.closest('[data-touch-tooltip]')) {
+      event.preventDefault();
+    }
+  });
 
   function showToast(message) {
     ensureMounted();

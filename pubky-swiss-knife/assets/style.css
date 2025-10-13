@@ -361,6 +361,8 @@ button.secondary {
 body.android-touch {
     -webkit-user-select: none;
     user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 body.android-touch input[type="text"],

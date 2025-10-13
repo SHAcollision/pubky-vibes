@@ -4,7 +4,7 @@ use pubky::{AuthToken, Capabilities};
 
 use crate::tabs::TokensTabState;
 use crate::utils::logging::ActivityLog;
-use crate::utils::mobile::{IS_ANDROID, touch_copy_option, touch_tooltip};
+use crate::utils::mobile::{is_android_touch, touch_copy_option, touch_tooltip};
 
 pub fn render_tokens_tab(state: TokensTabState, logs: ActivityLog) -> Element {
     let TokensTabState {
@@ -20,7 +20,7 @@ pub fn render_tokens_tab(state: TokensTabState, logs: ActivityLog) -> Element {
     } else {
         Some(token_value.clone())
     };
-    let token_copy_success = if IS_ANDROID {
+    let token_copy_success = if is_android_touch() {
         Some(String::from("Copied auth token to clipboard"))
     } else {
         None

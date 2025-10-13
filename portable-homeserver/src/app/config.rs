@@ -201,12 +201,6 @@ where
     guard.feedback = None;
 }
 
-#[cfg(target_os = "android")]
-pub(crate) fn default_data_dir() -> String {
-    super::android_data_dir().to_string_lossy().into_owned()
-}
-
-#[cfg(not(target_os = "android"))]
 pub(crate) fn default_data_dir() -> String {
     if let Some(project_dirs) = ProjectDirs::from("io", "Pubky", "PortableHomeserver") {
         project_dirs.data_dir().to_string_lossy().into_owned()

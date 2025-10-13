@@ -26,15 +26,23 @@ fn open_on_platform(url: &str) -> Result<()> {
 fn open_on_platform(url: &str) -> Result<()> {
     use android_intent::{Intent, with_current_env};
 
-    let mut error = None;
-    with_current_env(|env| {
-        if let Err(err) = Intent::new_with_uri(env, "ACTION_VIEW", url).start_activity() {
-            error = Some(err);
+    let mut activity_error: Option<anyhow::Error> = None;
+    with_current_env(|jni_env| {
+        let error_env = jni_env.clone();
+        match Intent::new_with_uri(jni_env, "ACTION_VIEW", url).start_activity() {
+            Ok(()) => {}
+            Err(err) => {
+                if let Ok(true) = error_env.exception_check() {
+                    let _ = error_env.exception_describe();
+                    let _ = error_env.exception_clear();
+                }
+                activity_error = Some(anyhow!(err));
+            }
         }
     });
 
-    if let Some(err) = error {
-        Err(anyhow!(err)).context("failed to hand off pubkyauth link")
+    if let Some(err) = activity_error {
+        Err(err).context("failed to hand off pubkyauth link")
     } else {
         Ok(())
     }

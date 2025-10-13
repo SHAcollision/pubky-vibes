@@ -9,6 +9,7 @@ use crate::tabs::{
     render_sessions_tab, render_storage_tab, render_tokens_tab,
 };
 use crate::utils::logging::{ActivityLog, LogEntry};
+use crate::utils::mobile::{MobileEnhancementsScript, touch_tooltip};
 use crate::utils::pubky::{PubkyFacadeHandle, PubkyFacadeState, PubkyFacadeStatus};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -211,6 +212,7 @@ pub fn App() -> Element {
 
     rsx! {
         style { {APP_STYLE} }
+        MobileEnhancementsScript {}
         div { class: "app",
             header {
                 div { class: "title-block",
@@ -305,6 +307,9 @@ pub fn App() -> Element {
                             button {
                                 class: "action",
                                 title: "Try to initialize Pubky again with the default settings",
+                                "data-touch-tooltip": touch_tooltip(
+                                    "Try to initialize Pubky again with the default settings",
+                                ),
                                 onclick: move |_| {
                                     queue_pubky_build(
                                         retry_handle.clone(),
@@ -323,6 +328,9 @@ pub fn App() -> Element {
                 button {
                     class: "activity-button",
                     title: "Show or hide the live log of Pubky activity",
+                    "data-touch-tooltip": touch_tooltip(
+                        "Show or hide the live log of Pubky activity",
+                    ),
                     onclick: move |_| {
                         let next = !*toggle_logs_signal.read();
                         toggle_logs_signal.set(next);

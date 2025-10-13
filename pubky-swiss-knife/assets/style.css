@@ -358,6 +358,111 @@ button.secondary {
     flex-wrap: wrap;
 }
 
+body.android-touch {
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+body.android-touch input[type="text"],
+body.android-touch input[type="password"],
+body.android-touch textarea,
+body.android-touch select {
+    -webkit-user-select: text;
+    user-select: text;
+}
+
+body.android-touch .copyable,
+body.android-touch .copyable-inline {
+    cursor: pointer;
+}
+
+body.android-touch .copyable {
+    position: relative;
+}
+
+body.android-touch .copyable::after {
+    content: attr(data-copy-label);
+    position: absolute;
+    top: 0.55rem;
+    right: 0.85rem;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(148, 163, 184, 0.8);
+    background: rgba(15, 23, 42, 0.85);
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    pointer-events: none;
+}
+
+body.android-touch .copyable:not([data-copy-label])::after,
+body.android-touch .copyable[data-copy-label=""]::after {
+    content: "Tap to copy";
+}
+
+body.android-touch .copyable-inline {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-left: 0.45rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 0.5rem;
+    background: rgba(15, 23, 42, 0.45);
+}
+
+body.android-touch .copyable-inline::after {
+    content: "Tap to copy";
+    font-size: 0.65rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: rgba(148, 163, 184, 0.85);
+}
+
+.touch-tooltip,
+.touch-toast {
+    position: fixed;
+    z-index: 1400;
+    max-width: min(90vw, 320px);
+    padding: 0.55rem 0.85rem;
+    border-radius: 0.65rem;
+    background: rgba(15, 23, 42, 0.94);
+    color: rgba(226, 232, 240, 0.95);
+    font-size: 0.85rem;
+    line-height: 1.3;
+    box-shadow: 0 12px 32px rgba(15, 23, 42, 0.55);
+    pointer-events: none;
+    opacity: 0;
+    transform: translate(-50%, -6px) scale(0.95);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+}
+
+.touch-tooltip::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -8px;
+    width: 12px;
+    height: 12px;
+    background: rgba(15, 23, 42, 0.94);
+    transform: translateX(-50%) rotate(45deg);
+}
+
+.touch-tooltip.visible {
+    opacity: 1;
+    transform: translate(-50%, -12px) scale(1);
+}
+
+.touch-toast {
+    left: 50%;
+    bottom: 4.5rem;
+    transform: translate(-50%, 12px) scale(0.95);
+}
+
+.touch-toast.visible {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+}
+
 .qr-visual {
     display: flex;
     flex-direction: column;

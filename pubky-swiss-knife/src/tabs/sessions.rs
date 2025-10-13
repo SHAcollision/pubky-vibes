@@ -4,6 +4,7 @@ use pubky::PublicKey;
 
 use crate::tabs::{SessionsTabState, format_session_info};
 use crate::utils::logging::ActivityLog;
+use crate::utils::mobile::{IS_ANDROID, touch_copy_option, touch_tooltip};
 use crate::utils::pubky::PubkyFacadeHandle;
 
 #[allow(clippy::clone_on_copy)]
@@ -23,6 +24,16 @@ pub fn render_sessions_tab(
     let homeserver_value = { homeserver.read().clone() };
     let signup_value = { signup_code.read().clone() };
     let details_value = { details.read().clone() };
+    let details_copy_value = if details_value.trim().is_empty() {
+        None
+    } else {
+        Some(details_value.clone())
+    };
+    let details_copy_success = if IS_ANDROID {
+        Some(String::from("Copied session details to clipboard"))
+    } else {
+        None
+    };
 
     let mut homeserver_binding = homeserver.clone();
     let mut signup_binding = signup_code.clone();
@@ -60,6 +71,9 @@ pub fn render_sessions_tab(
                             value: homeserver_value,
                             oninput: move |evt| homeserver_binding.set(evt.value()),
                             title: "Enter the homeserver's public key in base32 format",
+                            "data-touch-tooltip": touch_tooltip(
+                                "Enter the homeserver's public key in base32 format",
+                            ),
                         }
                     }
                     label {
@@ -68,6 +82,9 @@ pub fn render_sessions_tab(
                             value: signup_value,
                             oninput: move |evt| signup_binding.set(evt.value()),
                             title: "Optional invitation code provided by the homeserver",
+                            "data-touch-tooltip": touch_tooltip(
+                                "Optional invitation code provided by the homeserver",
+                            ),
                         }
                     }
                 }
@@ -75,6 +92,9 @@ pub fn render_sessions_tab(
                     button {
                         class: "action",
                         title: "Create a new session on this homeserver with the loaded key",
+                        "data-touch-tooltip": touch_tooltip(
+                            "Create a new session on this homeserver with the loaded key",
+                        ),
                         onclick: move |_| {
                             if let Some(kp) = signup_keypair.read().as_ref().cloned() {
                                 let homeserver = signup_homeserver.read().clone();
@@ -118,6 +138,9 @@ pub fn render_sessions_tab(
                     button {
                         class: "action secondary",
                         title: "Sign in as the root account using the loaded key",
+                        "data-touch-tooltip": touch_tooltip(
+                            "Sign in as the root account using the loaded key",
+                        ),
                         onclick: move |_| {
                             if let Some(kp) = signin_keypair.read().as_ref().cloned() {
                                 let Some(pubky) = signin_pubky.ready_or_log(&signin_logs) else {
@@ -151,6 +174,9 @@ pub fn render_sessions_tab(
                     button {
                         class: "action secondary",
                         title: "Check whether the current session token is still valid",
+                        "data-touch-tooltip": touch_tooltip(
+                            "Check whether the current session token is still valid",
+                        ),
                         onclick: move |_| {
                             if let Some(session) = revalidate_session_signal.read().as_ref().cloned() {
                                 let mut session_signal = revalidate_session_signal.clone();
@@ -179,6 +205,9 @@ pub fn render_sessions_tab(
                     button {
                         class: "action secondary",
                         title: "Sign out and revoke the current session token",
+                        "data-touch-tooltip": touch_tooltip(
+                            "Sign out and revoke the current session token",
+                        ),
                         onclick: move |_| {
                             let mut session_signal = signout_session_signal.clone();
                             let maybe_session = {
@@ -208,7 +237,15 @@ pub fn render_sessions_tab(
                     }
                 }
                 if !details_value.is_empty() {
-                    div { class: "outputs", {details_value} }
+                    div {
+                        class: "outputs copyable",
+                        "data-touch-tooltip": touch_tooltip(
+                            "Tap to copy the current session details",
+                        ),
+                        "data-touch-copy": touch_copy_option(details_copy_value.clone()),
+                        "data-copy-success": details_copy_success.clone(),
+                        {details_value}
+                    }
                 }
             }
         }

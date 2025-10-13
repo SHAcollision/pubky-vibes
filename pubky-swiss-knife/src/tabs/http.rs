@@ -9,6 +9,7 @@ use crate::app::NetworkMode;
 use crate::tabs::HttpTabState;
 use crate::utils::http::format_response;
 use crate::utils::logging::ActivityLog;
+use crate::utils::mobile::{IS_ANDROID, touch_copy_option, touch_tooltip};
 
 pub fn render_http_tab(
     network_mode: Signal<NetworkMode>,
@@ -28,6 +29,16 @@ pub fn render_http_tab(
     let headers_value = { headers.read().clone() };
     let body_value = { body.read().clone() };
     let response_value = { response.read().clone() };
+    let response_copy_value = if response_value.trim().is_empty() {
+        None
+    } else {
+        Some(response_value.clone())
+    };
+    let response_copy_success = if IS_ANDROID {
+        Some(String::from("Copied HTTP response to clipboard"))
+    } else {
+        None
+    };
 
     let mut method_binding = method;
     let mut url_binding = url;
@@ -53,6 +64,9 @@ pub fn render_http_tab(
                             value: method_value.clone(),
                             oninput: move |evt| method_binding.set(evt.value()),
                             title: "Choose the HTTP method for this request",
+                            "data-touch-tooltip": touch_tooltip(
+                                "Choose the HTTP method for this request",
+                            ),
                             for option in ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"] {
                                 option { value: option, selected: method_value == option, "{option}" }
                             }
@@ -65,6 +79,9 @@ pub fn render_http_tab(
                             oninput: move |evt| url_binding.set(evt.value()),
                             placeholder: "https:// or pubky://",
                             title: "Enter the destination URL, either https:// or pubky://",
+                            "data-touch-tooltip": touch_tooltip(
+                                "Enter the destination URL, either https:// or pubky://",
+                            ),
                         }
                     }
                 }
@@ -77,6 +94,9 @@ pub fn render_http_tab(
                             oninput: move |evt| headers_binding.set(evt.value()),
                             placeholder: "Header-Name: value",
                             title: "List any request headers, one per line in Name: Value format",
+                            "data-touch-tooltip": touch_tooltip(
+                                "List any request headers, one per line in Name: Value format",
+                            ),
                         }
                     }
                     label {
@@ -87,6 +107,9 @@ pub fn render_http_tab(
                             oninput: move |evt| body_binding.set(evt.value()),
                             placeholder: "Request body (optional)",
                             title: "Optional request body to send",
+                            "data-touch-tooltip": touch_tooltip(
+                                "Optional request body to send",
+                            ),
                         }
                     }
                 }
@@ -94,6 +117,9 @@ pub fn render_http_tab(
                     button {
                         class: "action",
                         title: "Send the request through the Pubky-aware client",
+                        "data-touch-tooltip": touch_tooltip(
+                            "Send the request through the Pubky-aware client",
+                        ),
                         onclick: move |_| {
                             let method = request_method_signal.read().clone();
                             let url = request_url_signal.read().clone();
@@ -145,7 +171,15 @@ pub fn render_http_tab(
                     }
                 }
                 if !response_value.is_empty() {
-                    div { class: "outputs", {response_value} }
+                    div {
+                        class: "outputs copyable",
+                        "data-touch-tooltip": touch_tooltip(
+                            "Tap to copy the HTTP response",
+                        ),
+                        "data-touch-copy": touch_copy_option(response_copy_value.clone()),
+                        "data-copy-success": response_copy_success.clone(),
+                        {response_value}
+                    }
                 }
             }
         }

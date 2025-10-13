@@ -1,5 +1,5 @@
 use std::{
-    env, fs,
+    fs,
     net::{IpAddr, SocketAddr},
     path::{Path, PathBuf},
     str::FromStr,
@@ -8,8 +8,9 @@ use std::{
 use anyhow::{Context, Result, anyhow};
 use dioxus::prelude::WritableExt;
 use dioxus::signals::{Signal, SignalData, Storage};
-use directories::ProjectDirs;
 use pubky_homeserver::{ConfigToml, Domain, LoggingToml, SignupMode};
+
+use super::platform;
 
 /// Shape of the editable configuration exposed in the UI form.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -202,15 +203,11 @@ where
 }
 
 pub(crate) fn default_data_dir() -> String {
-    if let Some(project_dirs) = ProjectDirs::from("io", "Pubky", "PortableHomeserver") {
-        project_dirs.data_dir().to_string_lossy().into_owned()
-    } else {
-        let mut fallback = env::var_os("HOME")
-            .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from("."));
-        fallback.push(".pubky");
-        fallback.to_string_lossy().into_owned()
-    }
+    platform::paths()
+        .data_dir
+        .clone()
+        .to_string_lossy()
+        .into_owned()
 }
 
 fn parse_socket(label: &str, raw: &str) -> Result<SocketAddr> {

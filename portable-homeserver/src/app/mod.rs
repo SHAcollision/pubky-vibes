@@ -1,5 +1,6 @@
 mod bootstrap;
 mod config;
+mod platform;
 mod state;
 mod status;
 mod style;

@@ -177,6 +177,12 @@ jobs:
           ANDROID_DIR=$(dirname "$GRADLEW_PATH")
           echo "dir=$ANDROID_DIR" >> "$GITHUB_OUTPUT"
 
+      - name: Patch Android manifest permissions
+        if: env.APP_DIR == 'portable-homeserver'
+        run: |
+          python3 "$GITHUB_WORKSPACE/portable-homeserver/scripts/patch_android_manifest.py" \
+            "${{ steps.locate-android.outputs.dir }}/app/src/main/AndroidManifest.xml"
+
       - name: Assemble release APK
         working-directory: ${{ steps.locate-android.outputs.dir }}
         run: |

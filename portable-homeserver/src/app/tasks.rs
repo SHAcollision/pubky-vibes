@@ -100,7 +100,7 @@ pub(crate) fn spawn_start_task<S1, S2>(
             }
             Err(err) => {
                 error!(?err, "failed to start homeserver");
-                *status_for_task.write() = ServerStatus::Error(err.to_string());
+                *status_for_task.write() = ServerStatus::Error(format!("{err:#}"));
             }
         }
     });

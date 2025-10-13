@@ -19,6 +19,7 @@ This plan follows the Dioxus 0.7.0 mobile tooling so the Android build offers th
 ## 4. Build & validation steps
 - Run `cargo check` for the desktop target to ensure refactors keep the native build green.
 - Use `dx bundle --android --release` to generate the Gradle project and compile the `aarch64-linux-android` native libraries.
+- Patch the generated `app/src/main/AndroidManifest.xml` with `python3 scripts/patch_android_manifest.py` so the build includes the network permissions required by the static testnet.
 - Copy the generated `jniLibs/arm64-v8a` output into the shared Gradle project (the workflow automates this and adds `libc++_shared.so` from the NDK to satisfy runtime linking).
 - Assemble the release APK via `./gradlew assembleRelease --console=plain` and archive the resulting unsigned APK (`app/build/outputs/apk/release/app-release-unsigned.apk`).
 

@@ -64,7 +64,16 @@ The Android target reuses the exact same UI tree as the desktop application so e
    dx bundle --android --release
    ```
 
-4. Assemble the release APK with Gradle:
+4. Patch the generated Android manifest so the embedded services can bind their sockets:
+
+   ```bash
+   python3 scripts/patch_android_manifest.py \
+     target/dx/portable-homeserver/release/android/app/src/main/AndroidManifest.xml
+   ```
+
+   Re-run this script whenever you regenerate the Android project to keep the manifest in sync.
+
+5. Assemble the release APK with Gradle:
 
    ```bash
    cd target/dx/portable-homeserver/release/android/app

@@ -18,6 +18,5 @@ pub fn launch_desktop() -> Result<()> {
 
 #[cfg(target_os = "android")]
 pub fn launch_mobile() {
-    super::platform::ensure_initialized();
     LaunchBuilder::mobile().launch(super::App);
 }

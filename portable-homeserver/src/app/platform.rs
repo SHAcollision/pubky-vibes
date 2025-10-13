@@ -8,11 +8,6 @@ pub(super) struct PlatformPaths {
 
 static PATHS: OnceLock<PlatformPaths> = OnceLock::new();
 
-#[cfg_attr(not(target_os = "android"), allow(dead_code))]
-pub(super) fn ensure_initialized() {
-    let _ = paths();
-}
-
 pub(super) fn paths() -> &'static PlatformPaths {
     PATHS.get_or_init(|| {
         let paths = platform_paths();
@@ -65,11 +60,8 @@ mod desktop {
 #[cfg(target_os = "android")]
 mod android {
     use super::{PlatformPaths, fallback_data_dir};
-    use ndk::native_activity::NativeActivity;
-    use ndk_context::android_context;
-    use ndk_sys::ANativeActivity;
+    use ndk_glue::native_activity;
     use std::path::PathBuf;
-    use std::ptr::NonNull;
     use tracing::warn;
 
     pub(super) fn paths() -> PlatformPaths {
@@ -87,15 +79,13 @@ mod android {
     }
 
     fn android_internal_data_path() -> Option<PathBuf> {
-        let context = android_context();
-        let raw_ptr = context.context();
-        if raw_ptr.is_null() {
-            return None;
+        match std::panic::catch_unwind(|| native_activity().internal_data_path().to_path_buf()) {
+            Ok(path) => Some(path),
+            Err(_) => {
+                warn!("Failed to access NativeActivity during Android path discovery");
+                None
+            }
         }
-
-        let activity_ptr = NonNull::new(raw_ptr.cast::<ANativeActivity>())?;
-        let activity = unsafe { NativeActivity::from_ptr(activity_ptr) };
-        Some(activity.internal_data_path().to_path_buf())
     }
 }
 
@@ -120,10 +110,9 @@ fn configure_android_environment(paths: &PlatformPaths) {
     }
 
     // SAFETY: On Android, modifying process environment variables is only safe
-    // before other threads start interacting with the environment. The Android
-    // launcher calls into [`ensure_initialized`] from the main thread before the
-    // rest of the app boots, ensuring this runs during single-threaded
-    // initialization.
+    // before other threads start interacting with the environment. The first
+    // call to [`paths`] happens on the UI thread while bootstrapping the app,
+    // ensuring this runs during single-threaded initialization.
     unsafe {
         std::env::set_var("TMPDIR", temp_dir.as_os_str());
     }

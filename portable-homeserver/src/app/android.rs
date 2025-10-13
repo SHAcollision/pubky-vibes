@@ -43,20 +43,21 @@ fn try_resolve_internal_base_dir() -> Result<PathBuf> {
     Ok(PathBuf::from(path))
 }
 
-fn resolve_internal_base_dir() -> PathBuf {
+fn internal_base_dir() -> PathBuf {
+    if let Some(existing) = INTERNAL_BASE_DIR.get() {
+        return existing.clone();
+    }
+
     match try_resolve_internal_base_dir() {
-        Ok(path) => path,
+        Ok(path) => {
+            let _ = INTERNAL_BASE_DIR.set(path.clone());
+            path
+        }
         Err(err) => {
             warn!(error = %err, "Falling back to temporary directory for Android storage");
             PathBuf::from("/data/local/tmp")
         }
     }
-}
-
-fn internal_base_dir() -> PathBuf {
-    INTERNAL_BASE_DIR
-        .get_or_init(resolve_internal_base_dir)
-        .clone()
 }
 
 /// Ensure the environment variables and filesystem locations we rely on exist on Android.
@@ -67,32 +68,50 @@ fn internal_base_dir() -> PathBuf {
 /// environment variables that the homeserver stack uses indirectly (for `tempfile`, config
 /// persistence, etc.).
 pub(crate) fn ensure_android_environment() -> PathBuf {
-    APP_DATA_DIR
-        .get_or_init(|| {
-            let base = internal_base_dir();
+    if let Some(existing) = APP_DATA_DIR.get() {
+        return existing.clone();
+    }
 
-            if env::var_os("HOME").is_none() {
-                debug!(path = %base.display(), "Setting HOME for Android runtime");
-                env::set_var("HOME", &base);
+    let base = internal_base_dir();
+
+    if INTERNAL_BASE_DIR.get().is_none() {
+        // The Android context has not been initialized yet. Try again later.
+        return base;
+    }
+
+    let home_before = env::var_os("HOME");
+    if home_before.as_ref() != Some(base.as_os_str()) {
+        debug!(path = %base.display(), "Setting HOME for Android runtime");
+        env::set_var("HOME", &base);
+    }
+
+    let data_dir = base.join("pubky");
+    if let Err(err) = fs::create_dir_all(&data_dir) {
+        warn!(
+            error = %err,
+            path = %data_dir.display(),
+            "Failed to create Android data directory"
+        );
+    }
+
+    let tmp_dir = data_dir.join("tmp");
+    match fs::create_dir_all(&tmp_dir) {
+        Ok(()) => {
+            let tmp_before = env::var_os("TMPDIR");
+            if tmp_before.as_ref() != Some(tmp_dir.as_os_str()) {
+                debug!(path = %tmp_dir.display(), "Setting TMPDIR for Android runtime");
+                env::set_var("TMPDIR", &tmp_dir);
             }
+        }
+        Err(err) => warn!(
+            error = %err,
+            path = %tmp_dir.display(),
+            "Failed to create Android tmp directory"
+        ),
+    }
 
-            let data_dir = base.join("pubky");
-            if let Err(err) = fs::create_dir_all(&data_dir) {
-                warn!(error = %err, path = %data_dir.display(), "Failed to create Android data directory");
-            }
-
-            let tmp_dir = data_dir.join("tmp");
-            match fs::create_dir_all(&tmp_dir) {
-                Ok(()) => {
-                    debug!(path = %tmp_dir.display(), "Setting TMPDIR for Android runtime");
-                    env::set_var("TMPDIR", &tmp_dir);
-                }
-                Err(err) => warn!(error = %err, path = %tmp_dir.display(), "Failed to create Android tmp directory"),
-            }
-
-            data_dir
-        })
-        .clone()
+    let _ = APP_DATA_DIR.set(data_dir.clone());
+    data_dir
 }
 
 pub(crate) fn android_default_data_dir() -> PathBuf {

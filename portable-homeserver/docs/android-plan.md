@@ -23,7 +23,7 @@ This plan follows the Dioxus 0.7.0 mobile tooling so the Android build offers th
 - Copy the generated `jniLibs/arm64-v8a` output into the shared Gradle project (the workflow automates this and adds `libc++_shared.so` from the NDK to satisfy runtime linking).
 - Assemble the release APK via `./gradlew assembleRelease --console=plain` and archive the resulting unsigned APK (`app/build/outputs/apk/release/app-release-unsigned.apk`).
 
-The launcher also sets `PUBKY_LMDB_MAP_SIZE_BYTES=268435456` when running on Android so LMDB uses a smaller 256 MiB map and avoids exhausting the device’s address space. Override the variable if a custom build needs a different cap.
+The upstream branch trims LMDB’s default map size to 64 MiB, and the launcher also sets `PUBKY_LMDB_MAP_SIZE_BYTES=268435456` when running on Android so LMDB uses a smaller 256 MiB map and avoids exhausting the device’s address space. Override the variable if a custom build needs a different cap.
 
 ## 5. Continuous integration
 - Automate the bundling on GitHub Actions by installing the Android SDK, NDK 25.2.9519653, the Dioxus CLI, and the Rust target.

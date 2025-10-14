@@ -42,8 +42,8 @@ Configuration lives in `config.toml` within the chosen directory. The homeserver
 ## Architecture
 
 - `dioxus = 0.7.0-rc.1` powers the desktop UI, allowing us to ship a single codebase that feels native on each OS.
-- `pubky-homeserver = 0.6.0-rc.6` runs inside the app. We keep it alive via a signal state container and drop it to shut the node down.
-- `pubky-testnet = 0.6.0-rc.6` spins up a static local network (DHT, relays, and homeserver) when you select the Testnet radio option.
+- `pubky-homeserver` (tracked from [`pubky-core`'s `experimental/small-lmdb` branch](https://github.com/pubky/pubky-core/tree/experimental/small-lmdb)) runs inside the app. We keep it alive via a signal state container and drop it to shut the node down.
+- `pubky-testnet` (sourced from the same branch) spins up a static local network (DHT, relays, and homeserver) when you select the Testnet radio option.
 - The UI state is built with reactive signals so long-running async tasks (like spinning up the homeserver) don’t block the interface.
 
 This is intentionally small so teams can iterate quickly during hackathons: reuse the UI skeleton, drop in your Pubky extensions, and you have a production-friendly launcher.
@@ -84,4 +84,4 @@ Ensure `ANDROID_HOME`, `ANDROID_SDK_ROOT`, and `NDK_HOME` point to the toolchain
 
 ### Android runtime notes
 
-- The static testnet runs entirely in memory on Android. The launcher sets `PUBKY_LMDB_MAP_SIZE_BYTES=268435456` (256 MiB) before booting the services so LMDB can allocate its map without exhausting the device’s address space. Override the variable before launching the app if you need more headroom.
+- The static testnet runs entirely in memory on Android. The upstream branch trims LMDB’s default map size to 64 MiB, and the launcher sets `PUBKY_LMDB_MAP_SIZE_BYTES=268435456` (256 MiB) before booting the services so LMDB can allocate its map without exhausting the device’s address space. Override the variable before launching the app if you need more headroom.

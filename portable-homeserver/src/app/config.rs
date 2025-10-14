@@ -8,8 +8,14 @@ use std::{
 use anyhow::{Context, Result, anyhow};
 use dioxus::prelude::WritableExt;
 use dioxus::signals::{Signal, SignalData, Storage};
+#[cfg(not(target_os = "android"))]
 use directories::ProjectDirs;
 use pubky_homeserver::{ConfigToml, Domain, LoggingToml, SignupMode};
+
+#[cfg(target_os = "android")]
+use ndk::native_activity::NativeActivity;
+#[cfg(target_os = "android")]
+use ndk_context::android_context;
 
 /// Shape of the editable configuration exposed in the UI form.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -202,15 +208,55 @@ where
 }
 
 pub(crate) fn default_data_dir() -> String {
-    if let Some(project_dirs) = ProjectDirs::from("io", "Pubky", "PortableHomeserver") {
-        project_dirs.data_dir().to_string_lossy().into_owned()
-    } else {
-        let mut fallback = env::var_os("HOME")
-            .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from("."));
-        fallback.push(".pubky");
-        fallback.to_string_lossy().into_owned()
+    #[cfg(target_os = "android")]
+    {
+        android_default_data_dir().unwrap_or_default()
     }
+
+    #[cfg(not(target_os = "android"))]
+    {
+        if let Some(project_dirs) = ProjectDirs::from("io", "Pubky", "PortableHomeserver") {
+            project_dirs.data_dir().to_string_lossy().into_owned()
+        } else {
+            let mut fallback = env::var_os("HOME")
+                .map(PathBuf::from)
+                .unwrap_or_else(|| PathBuf::from("."));
+            fallback.push(".pubky");
+            fallback.to_string_lossy().into_owned()
+        }
+    }
+}
+
+#[cfg(target_os = "android")]
+fn android_default_data_dir() -> Option<String> {
+    let mut base = android_files_dir().or_else(android_home_dir)?;
+    base.push(".pubky");
+    Some(base.to_string_lossy().into_owned())
+}
+
+#[cfg(target_os = "android")]
+fn android_files_dir() -> Option<PathBuf> {
+    let context = android_context();
+    let raw_activity = context.context();
+    if raw_activity.is_null() {
+        return None;
+    }
+    let activity = unsafe { NativeActivity::from_ptr(raw_activity as *mut _) };
+
+    activity
+        .internal_data_path()
+        .or_else(|| activity.external_data_path())
+        .map(Path::to_path_buf)
+}
+
+#[cfg(target_os = "android")]
+fn android_home_dir() -> Option<PathBuf> {
+    let home = env::var_os("HOME").map(PathBuf::from)?;
+    if home.as_os_str().is_empty() || home == Path::new("/") {
+        return None;
+    }
+
+    Some(home)
 }
 
 fn parse_socket(label: &str, raw: &str) -> Result<SocketAddr> {

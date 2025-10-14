@@ -11,8 +11,8 @@ anyhow = "1"
 base64 = "0.22"
 directories = "6"
 mimalloc = "0.1"
-pubky-homeserver = "0.6.0-rc.6"
-pubky-testnet = "0.6.0-rc.6"
+pubky-homeserver = "0.6.0-rc.6exp"
+pubky-testnet = "0.6.0-rc.6exp"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
 serde = { version = "1", features = ["derive"] }
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "signal", "fs", "time"] }

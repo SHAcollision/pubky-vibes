@@ -243,10 +243,15 @@ fn android_files_dir() -> Option<PathBuf> {
     let activity_ptr = NonNull::new(raw_activity)?;
     let activity = unsafe { NativeActivity::from_ptr(activity_ptr) };
 
+    let internal = activity.internal_data_path();
+    if !internal.as_os_str().is_empty() {
+        return Some(internal.to_path_buf());
+    }
+
     activity
-        .internal_data_path()
+        .external_data_path()
+        .filter(|path| !path.as_os_str().is_empty())
         .map(Path::to_path_buf)
-        .or_else(|| activity.external_data_path().map(Path::to_path_buf))
 }
 
 #[cfg(target_os = "android")]

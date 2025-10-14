@@ -115,7 +115,7 @@ jobs:
             fi
 
             echo "::group::dx bundle ($triple -> $abi)"
-            dx bundle --android --release --target "$triple" --json-output
+            dx bundle --android --release --target "$triple"
             echo "::endgroup::"
 
             project_gradlew=$(find target/dx -maxdepth 6 -type f -name gradlew -print -quit)

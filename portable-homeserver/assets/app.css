@@ -528,9 +528,23 @@ button.secondary[disabled] {
     gap: 10px;
 }
 
+.status-details {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 0;
+}
+
+.status-details li {
+    min-width: 0;
+}
+
 .status-details a {
     color: #5be4ff;
     text-decoration: none;
+    word-break: break-all;
+    overflow-wrap: anywhere;
+    max-width: 100%;
 }
 
 .status-details a:hover {
@@ -545,6 +559,10 @@ pre.public-key {
     font-family: 'JetBrains Mono', 'Fira Code', monospace;
     font-size: 0.9rem;
     border: 1px solid rgba(0, 194, 255, 0.25);
+    max-width: 100%;
+    white-space: pre-wrap;
+    word-break: break-all;
+    overflow-wrap: anywhere;
 }
 
 .config-editor {

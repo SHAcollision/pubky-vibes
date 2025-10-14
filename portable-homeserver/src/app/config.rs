@@ -248,10 +248,12 @@ fn android_files_dir() -> Option<PathBuf> {
         return Some(internal.to_path_buf());
     }
 
-    activity
-        .external_data_path()
-        .filter(|path| !path.as_os_str().is_empty())
-        .map(Path::to_path_buf)
+    let external = activity.external_data_path();
+    if external.as_os_str().is_empty() {
+        None
+    } else {
+        Some(external.to_path_buf())
+    }
 }
 
 #[cfg(target_os = "android")]

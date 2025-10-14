@@ -64,14 +64,14 @@ The Android target reuses the exact same UI tree as the desktop application so e
    dx bundle --android --release
    ```
 
-4. Patch the generated Android manifest so the embedded services can bind their sockets:
+4. Patch the generated Android manifest so the embedded services can bind their sockets and so the launcher only allows cleartext calls to localhost:
 
    ```bash
    python3 scripts/patch_android_manifest.py \
      target/dx/portable-homeserver/release/android/app/src/main/AndroidManifest.xml
    ```
 
-   Re-run this script whenever you regenerate the Android project to keep the manifest in sync.
+   The helper keeps `<uses-permission>` entries outside `<application>`, drops the global `usesCleartextTraffic` flag in favour of a scoped `@xml/network_security_config` reference, and generates the matching XML file under `app/src/main/res/xml/`. Re-run it whenever you regenerate the Android project to keep the manifest in sync.
 
 5. Assemble the release APK with Gradle:
 
@@ -81,3 +81,7 @@ The Android target reuses the exact same UI tree as the desktop application so e
    ```
 
 Ensure `ANDROID_HOME`, `ANDROID_SDK_ROOT`, and `NDK_HOME` point to the toolchain installed in step 1 before invoking Gradle. The unsigned release build is available under `app/build/outputs/apk/release/`. CI signs the APK with the debug keystore and uploads it as a workflow artifact.
+
+### Android runtime notes
+
+- The static testnet runs entirely in memory on Android. The launcher sets `PUBKY_LMDB_MAP_SIZE_BYTES=268435456` (256 MiB) before booting the services so LMDB can allocate its map without exhausting the device’s address space. Override the variable before launching the app if you need more headroom.

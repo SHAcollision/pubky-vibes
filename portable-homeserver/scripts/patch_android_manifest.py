@@ -8,6 +8,8 @@ import os
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
+NETWORK_SECURITY_CONFIG = """<?xml version=\"1.0\" encoding=\"utf-8\"?>\n<network-security-config>\n    <domain-config cleartextTrafficPermitted=\"true\">\n        <domain>127.0.0.1</domain>\n        <domain>localhost</domain>\n    </domain-config>\n</network-security-config>\n"""
+
 ANDROID_NS = "http://schemas.android.com/apk/res/android"
 NS_ATTR = "{" + ANDROID_NS + "}"
 
@@ -54,7 +56,7 @@ def ensure_permission(manifest: ET.Element, permission: str) -> None:
     manifest.insert(insert_index, new_node)
 
 
-def ensure_application_flag(manifest: ET.Element, attribute: str, value: str) -> None:
+def ensure_application_attribute(manifest: ET.Element, attribute: str, value: str) -> None:
     application = manifest.find("application")
     if application is None:
         raise SystemExit("Manifest does not contain an <application> element to patch")
@@ -64,6 +66,43 @@ def ensure_application_flag(manifest: ET.Element, attribute: str, value: str) ->
         application.set(android_attr, value)
 
 
+def remove_application_attribute(manifest: ET.Element, attribute: str) -> None:
+    application = manifest.find("application")
+    if application is None:
+        raise SystemExit("Manifest does not contain an <application> element to patch")
+
+    android_attr = NS_ATTR + attribute
+    if android_attr in application.attrib:
+        del application.attrib[android_attr]
+
+
+def ensure_network_security_config(manifest_path: Path) -> None:
+    main_dir = manifest_path.parent
+    res_dir = main_dir / "res" / "xml"
+    res_dir.mkdir(parents=True, exist_ok=True)
+
+    config_path = res_dir / "network_security_config.xml"
+    current = None
+    try:
+        current = config_path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        current = None
+    except OSError as exc:
+        raise SystemExit(
+            f"Failed to read existing network security config at {config_path}: {exc}"
+        ) from exc
+
+    if current == NETWORK_SECURITY_CONFIG:
+        return
+
+    try:
+        config_path.write_text(NETWORK_SECURITY_CONFIG, encoding="utf-8")
+    except OSError as exc:
+        raise SystemExit(
+            f"Failed to write network security config to {config_path}: {exc}"
+        ) from exc
+
+
 def main() -> None:
     args = parse_args()
     tree = load_manifest(args.manifest)
@@ -71,7 +110,9 @@ def main() -> None:
 
     ensure_permission(manifest, "android.permission.INTERNET")
     ensure_permission(manifest, "android.permission.ACCESS_NETWORK_STATE")
-    ensure_application_flag(manifest, "usesCleartextTraffic", "true")
+    remove_application_attribute(manifest, "usesCleartextTraffic")
+    ensure_application_attribute(manifest, "networkSecurityConfig", "@xml/network_security_config")
+    ensure_network_security_config(args.manifest)
 
     if hasattr(ET, "indent"):
         ET.indent(tree, space="    ")  # type: ignore[attr-defined]

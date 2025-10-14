@@ -185,8 +185,36 @@ fn ensure_android_temp_dir() -> Result<()> {
     };
 
     set_android_tmp_vars(&dir_path);
+    ensure_android_lmdb_map_size();
 
     Ok(())
+}
+
+#[cfg(target_os = "android")]
+const ANDROID_TESTNET_LMDB_MAP_SIZE: usize = 256 * 1024 * 1024; // 256 MiB
+
+#[cfg(target_os = "android")]
+fn ensure_android_lmdb_map_size() {
+    const VAR_NAME: &str = "PUBKY_LMDB_MAP_SIZE_BYTES";
+    static LMDB_MAP_SIZE_SET: OnceLock<()> = OnceLock::new();
+
+    LMDB_MAP_SIZE_SET.get_or_init(|| {
+        if env::var_os(VAR_NAME)
+            .filter(|value| !value.is_empty())
+            .is_some()
+        {
+            return;
+        }
+
+        let value = ANDROID_TESTNET_LMDB_MAP_SIZE.to_string();
+
+        // SAFETY: Setting process environment variables is inherently unsafe on Android because it
+        // crosses the FFI boundary into libc. The variable name is ASCII and the value is derived
+        // from a valid UTF-8 string, satisfying the API's contract.
+        unsafe {
+            env::set_var(VAR_NAME, value);
+        }
+    });
 }
 
 #[cfg(target_os = "android")]

@@ -15,9 +15,11 @@ use directories::ProjectDirs;
 use pubky_homeserver::{ConfigToml, Domain, LoggingToml, SignupMode};
 
 #[cfg(target_os = "android")]
-use ndk::{native_activity::NativeActivity, sys::ANativeActivity};
+use ndk::native_activity::NativeActivity;
 #[cfg(target_os = "android")]
 use ndk_context::android_context;
+#[cfg(target_os = "android")]
+use ndk_sys::ANativeActivity;
 
 /// Shape of the editable configuration exposed in the UI form.
 #[derive(Clone, Debug, PartialEq, Eq)]

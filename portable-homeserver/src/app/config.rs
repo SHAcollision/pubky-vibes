@@ -1,5 +1,3 @@
-#[cfg(target_os = "android")]
-use std::ptr::NonNull;
 use std::{
     env, fs,
     net::{IpAddr, SocketAddr},
@@ -15,11 +13,14 @@ use directories::ProjectDirs;
 use pubky_homeserver::{ConfigToml, Domain, LoggingToml, SignupMode};
 
 #[cfg(target_os = "android")]
-use ndk::native_activity::NativeActivity;
+use std::panic::catch_unwind;
+
+#[cfg(target_os = "android")]
+use jni::JavaVM;
+#[cfg(target_os = "android")]
+use jni::objects::{JObject, JString, JValue};
 #[cfg(target_os = "android")]
 use ndk_context::android_context;
-#[cfg(target_os = "android")]
-use ndk_sys::ANativeActivity;
 
 /// Shape of the editable configuration exposed in the UI form.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -240,21 +241,63 @@ fn android_default_data_dir() -> Option<String> {
 
 #[cfg(target_os = "android")]
 fn android_files_dir() -> Option<PathBuf> {
-    let context = android_context();
-    let raw_activity = context.context() as *mut ANativeActivity;
-    let activity_ptr = NonNull::new(raw_activity)?;
-    let activity = unsafe { NativeActivity::from_ptr(activity_ptr) };
+    let context = catch_unwind(android_context).ok()?;
+    let vm = unsafe { JavaVM::from_raw(context.vm() as *mut jni::sys::JavaVM) }.ok()?;
+    let env = vm.attach_current_thread().ok()?;
 
-    let internal = activity.internal_data_path();
-    if !internal.as_os_str().is_empty() {
-        return Some(internal.to_path_buf());
+    let raw_activity = context.context() as *mut jni::sys::_jobject;
+    if raw_activity.is_null() {
+        return None;
+    }
+    let activity = unsafe { JObject::from_raw(raw_activity) };
+
+    if let Some(path) =
+        android_activity_path(&env, &activity, "getFilesDir", "()Ljava/io/File;", &[])
+    {
+        return Some(path);
     }
 
-    let external = activity.external_data_path();
-    if external.as_os_str().is_empty() {
+    android_activity_path(
+        &env,
+        &activity,
+        "getExternalFilesDir",
+        "(Ljava/lang/String;)Ljava/io/File;",
+        &[JValue::Object(JObject::null())],
+    )
+}
+
+#[cfg(target_os = "android")]
+fn android_activity_path(
+    env: &jni::JNIEnv<'_>,
+    activity: &JObject<'_>,
+    method: &str,
+    signature: &str,
+    args: &[JValue<'_>],
+) -> Option<PathBuf> {
+    let file_obj = env
+        .call_method(activity, method, signature, args)
+        .ok()?
+        .l()
+        .ok()?;
+    if file_obj.is_null() {
+        return None;
+    }
+
+    let absolute = env
+        .call_method(&file_obj, "getAbsolutePath", "()Ljava/lang/String;", &[])
+        .ok()?
+        .l()
+        .ok()?;
+    if absolute.is_null() {
+        return None;
+    }
+
+    let absolute = JString::from(absolute);
+    let path: String = env.get_string(&absolute).ok()?.into();
+    if path.is_empty() {
         None
     } else {
-        Some(external.to_path_buf())
+        Some(PathBuf::from(path))
     }
 }
 

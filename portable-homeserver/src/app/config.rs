@@ -1,3 +1,5 @@
+#[cfg(target_os = "android")]
+use std::mem::ManuallyDrop;
 use std::{
     env, fs,
     net::{IpAddr, SocketAddr},
@@ -8,8 +10,17 @@ use std::{
 use anyhow::{Context, Result, anyhow};
 use dioxus::prelude::WritableExt;
 use dioxus::signals::{Signal, SignalData, Storage};
+#[cfg(not(target_os = "android"))]
 use directories::ProjectDirs;
 use pubky_homeserver::{ConfigToml, Domain, LoggingToml, SignupMode};
+
+#[cfg(target_os = "android")]
+use jni::{
+    JNIEnv, JavaVM,
+    objects::{JObject, JString, JValue},
+};
+#[cfg(target_os = "android")]
+use ndk_context::android_context;
 
 /// Shape of the editable configuration exposed in the UI form.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -202,14 +213,97 @@ where
 }
 
 pub(crate) fn default_data_dir() -> String {
-    if let Some(project_dirs) = ProjectDirs::from("io", "Pubky", "PortableHomeserver") {
-        project_dirs.data_dir().to_string_lossy().into_owned()
+    #[cfg(target_os = "android")]
+    {
+        android_default_data_dir().unwrap_or_default()
+    }
+
+    #[cfg(not(target_os = "android"))]
+    {
+        if let Some(project_dirs) = ProjectDirs::from("io", "Pubky", "PortableHomeserver") {
+            project_dirs.data_dir().to_string_lossy().into_owned()
+        } else {
+            let mut fallback = env::var_os("HOME")
+                .map(PathBuf::from)
+                .unwrap_or_else(|| PathBuf::from("."));
+            fallback.push(".pubky");
+            fallback.to_string_lossy().into_owned()
+        }
+    }
+}
+
+#[cfg(target_os = "android")]
+fn android_default_data_dir() -> Option<String> {
+    let mut base = android_files_dir().or_else(android_home_dir)?;
+    base.push(".pubky");
+    Some(base.to_string_lossy().into_owned())
+}
+
+#[cfg(target_os = "android")]
+fn android_files_dir() -> Option<PathBuf> {
+    let context = android_context();
+    let vm = ManuallyDrop::new(unsafe { JavaVM::from_raw(context.vm().cast()) }.ok()?);
+    let env = (&*vm).attach_current_thread().ok()?;
+    let activity = unsafe { JObject::from_raw(context.context() as jni::sys::jobject) };
+
+    let internal = call_path_method(&env, &activity, "getFilesDir", "()Ljava/io/File;", &[]);
+    if let Some(path) = internal {
+        if !path.as_os_str().is_empty() {
+            return Some(path);
+        }
+    }
+
+    call_path_method(
+        &env,
+        &activity,
+        "getExternalFilesDir",
+        "(Ljava/lang/String;)Ljava/io/File;",
+        &[JValue::Object(JObject::null())],
+    )
+}
+
+#[cfg(target_os = "android")]
+fn android_home_dir() -> Option<PathBuf> {
+    let home = env::var_os("HOME").map(PathBuf::from)?;
+    if home.as_os_str().is_empty() || home == Path::new("/") {
+        return None;
+    }
+
+    Some(home)
+}
+
+#[cfg(target_os = "android")]
+fn call_path_method(
+    env: &JNIEnv<'_>,
+    activity: &JObject<'_>,
+    method: &str,
+    signature: &str,
+    args: &[JValue<'_>],
+) -> Option<PathBuf> {
+    let file_obj = env
+        .call_method(activity, method, signature, args)
+        .ok()?
+        .l()
+        .ok()?;
+    if file_obj.is_null() {
+        return None;
+    }
+
+    let absolute = env
+        .call_method(&file_obj, "getAbsolutePath", "()Ljava/lang/String;", &[])
+        .ok()?
+        .l()
+        .ok()?;
+    if absolute.is_null() {
+        return None;
+    }
+
+    let absolute = JString::from(absolute);
+    let value: String = env.get_string(&absolute).ok()?.into();
+    if value.is_empty() {
+        None
     } else {
-        let mut fallback = env::var_os("HOME")
-            .map(PathBuf::from)
-            .unwrap_or_else(|| PathBuf::from("."));
-        fallback.push(".pubky");
-        fallback.to_string_lossy().into_owned()
+        Some(PathBuf::from(value))
     }
 }
 

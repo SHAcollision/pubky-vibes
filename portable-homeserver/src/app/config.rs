@@ -1,3 +1,5 @@
+#[cfg(target_os = "android")]
+use std::ptr::NonNull;
 use std::{
     env, fs,
     net::{IpAddr, SocketAddr},
@@ -13,7 +15,7 @@ use directories::ProjectDirs;
 use pubky_homeserver::{ConfigToml, Domain, LoggingToml, SignupMode};
 
 #[cfg(target_os = "android")]
-use ndk::native_activity::NativeActivity;
+use ndk::{native_activity::NativeActivity, sys::ANativeActivity};
 #[cfg(target_os = "android")]
 use ndk_context::android_context;
 
@@ -237,16 +239,14 @@ fn android_default_data_dir() -> Option<String> {
 #[cfg(target_os = "android")]
 fn android_files_dir() -> Option<PathBuf> {
     let context = android_context();
-    let raw_activity = context.context();
-    if raw_activity.is_null() {
-        return None;
-    }
-    let activity = unsafe { NativeActivity::from_ptr(raw_activity as *mut _) };
+    let raw_activity = context.context() as *mut ANativeActivity;
+    let activity_ptr = NonNull::new(raw_activity)?;
+    let activity = unsafe { NativeActivity::from_ptr(activity_ptr) };
 
     activity
         .internal_data_path()
-        .or_else(|| activity.external_data_path())
         .map(Path::to_path_buf)
+        .or_else(|| activity.external_data_path().map(Path::to_path_buf))
 }
 
 #[cfg(target_os = "android")]

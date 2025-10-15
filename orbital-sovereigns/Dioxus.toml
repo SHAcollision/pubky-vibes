@@ -1,0 +1,13 @@
+[application]
+name = "Orbital Sovereigns"
+default_platform = "desktop"
+
+[web.app]
+title = "Orbital Sovereigns"
+
+[desktop]
+bundle = false
+
+[platform.default]
+asset_dir = "assets"
+

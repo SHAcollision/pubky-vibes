@@ -65,3 +65,25 @@ pub struct HttpTabState {
     pub body: Signal<String>,
     pub response: Signal<String>,
 }
+
+#[derive(Clone)]
+pub struct SocialTabState {
+    pub session: Signal<Option<PubkySession>>,
+    pub profile_name: Signal<String>,
+    pub profile_bio: Signal<String>,
+    pub profile_image: Signal<String>,
+    pub profile_status: Signal<String>,
+    pub profile_links: Signal<String>,
+    pub profile_error: Signal<String>,
+    pub profile_response: Signal<String>,
+    pub post_content: Signal<String>,
+    pub post_kind: Signal<String>,
+    pub post_parent: Signal<String>,
+    pub post_embed_kind: Signal<String>,
+    pub post_embed_uri: Signal<String>,
+    pub post_attachments: Signal<String>,
+    pub post_response: Signal<String>,
+    pub tag_uri: Signal<String>,
+    pub tag_label: Signal<String>,
+    pub tag_response: Signal<String>,
+}

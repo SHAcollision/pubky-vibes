@@ -1,26 +1,39 @@
 use anyhow::Result;
-use reqwest::header::CONTENT_TYPE;
+use reqwest::{
+    StatusCode, Version,
+    header::{CONTENT_TYPE, HeaderMap},
+};
 use serde_json::Value;
 
 pub async fn format_response(response: reqwest::Response) -> Result<String> {
     let status = response.status();
     let version = response.version();
-    let mut headers = Vec::new();
+    let headers = response.headers().clone();
+    let bytes = response.bytes().await?;
+    Ok(format_response_parts(status, version, &headers, &bytes))
+}
+
+pub fn format_response_parts(
+    status: StatusCode,
+    version: Version,
+    headers: &HeaderMap,
+    body: &[u8],
+) -> String {
+    let mut header_lines = Vec::new();
     let mut content_type = None;
-    for (name, value) in response.headers().iter() {
+    for (name, value) in headers.iter() {
         if let Ok(text) = value.to_str() {
             if name == CONTENT_TYPE {
                 content_type = Some(text.to_lowercase());
             }
-            headers.push(format!("{}: {}", name, text));
+            header_lines.push(format!("{}: {}", name, text));
         }
     }
-    let bytes = response.bytes().await?;
-    let body = render_body(&bytes, content_type.as_deref());
-    Ok(format!(
+    let body = render_body(body, content_type.as_deref());
+    format!(
         "{version:?} {status}\n{}\n\n{body}",
-        headers.join("\n")
-    ))
+        header_lines.join("\n")
+    )
 }
 
 fn render_body(bytes: &[u8], content_type: Option<&str>) -> String {

@@ -300,7 +300,7 @@ async fn start_server(start_spec: StartSpec) -> Result<(RunningServer, ServerInf
             Ok((RunningServer::Mainnet(Arc::new(server)), info))
         }
         StartSpec::Testnet => {
-            let static_net = retry_addr_in_use(|| StaticTestnet::start())
+            let static_net = retry_addr_in_use(StaticTestnet::start)
                 .await
                 .context("StaticTestnet::start()")?;
             let homeserver = static_net.homeserver();

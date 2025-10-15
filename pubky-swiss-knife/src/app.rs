@@ -12,6 +12,9 @@ use crate::utils::logging::{ActivityLog, LogEntry};
 use crate::utils::mobile::{MobileEnhancementsScript, touch_tooltip};
 use crate::utils::pubky::{PubkyFacadeHandle, PubkyFacadeState, PubkyFacadeStatus};
 
+const TESTNET_DEFAULT_SESSION_HOMESERVER: &str =
+    "8pinxxgqs41n4aididenw5apqp1urfmzdztr8jt4abrkdn435ewo";
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NetworkMode {
     Mainnet,
@@ -184,6 +187,14 @@ pub fn App() -> Element {
         body: use_signal(String::new),
         response: use_signal(String::new),
     };
+
+    let mut session_homeserver_prefill = sessions_state.homeserver.clone();
+    let network_signal_for_prefill = network_mode.clone();
+    use_effect(move || {
+        if *network_signal_for_prefill.read() == NetworkMode::Testnet {
+            session_homeserver_prefill.set(String::from(TESTNET_DEFAULT_SESSION_HOMESERVER));
+        }
+    });
 
     if !*pubky_bootstrapped.read() {
         pubky_bootstrapped.set(true);

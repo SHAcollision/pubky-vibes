@@ -265,7 +265,26 @@
       copyToClipboard(value).then((ok) => {
         const successMessage = target.getAttribute('data-copy-success') || 'Copied to clipboard';
         const failureMessage = target.getAttribute('data-copy-failure') || 'Unable to copy';
-        showToast(ok ? successMessage : failureMessage);
+        const feedbackMode = target.getAttribute('data-touch-feedback') || 'toast';
+        const message = ok ? successMessage : failureMessage;
+
+        if (!message) {
+          return;
+        }
+
+        if (feedbackMode === 'tooltip') {
+          cancelTooltip();
+          const rect = target.getBoundingClientRect();
+          const x = rect.left + rect.width / 2;
+          const y = rect.top;
+
+          if (Number.isFinite(x) && Number.isFinite(y)) {
+            showTooltip(target, message, x, y);
+            return;
+          }
+        }
+
+        showToast(message);
       });
     },
     true

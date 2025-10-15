@@ -691,10 +691,14 @@ fn AdminPanel(
     let status_snapshot = status.read().clone();
     let admin_snapshot = admin_state.read().clone();
 
-    let signup_token_copy_success = if is_android_touch() {
-        Some(String::from("Copied signup token"))
+    let (touch_feedback_mode, touch_copy_hint, signup_token_copy_success) = if is_android_touch() {
+        (
+            Some(String::from("tooltip")),
+            Some(String::from("Tap to copy")),
+            Some(String::from("Copied signup token")),
+        )
     } else {
-        None
+        (None, None, None)
     };
 
     let info_section = match &admin_snapshot.info {
@@ -945,6 +949,8 @@ fn AdminPanel(
                         pre {
                             class: "token-display",
                             "data-touch-copy": touch_copy(token.clone()),
+                            "data-touch-tooltip": touch_copy_hint.clone(),
+                            "data-touch-feedback": touch_feedback_mode.clone(),
                             "data-copy-success": signup_token_copy_success.clone(),
                             "{token}"
                         }
@@ -1323,11 +1329,16 @@ fn StatusPanel(status: ServerStatus) -> Element {
             pubky_url,
             public_key,
         } => {
-            let public_key_copy_success = if is_android_touch() {
-                Some(String::from("Copied homeserver public key"))
-            } else {
-                None
-            };
+            let (public_key_touch_feedback, public_key_touch_hint, public_key_copy_success) =
+                if is_android_touch() {
+                    (
+                        Some(String::from("tooltip")),
+                        Some(String::from("Tap to copy")),
+                        Some(String::from("Copied homeserver public key")),
+                    )
+                } else {
+                    (None, None, None)
+                };
             Some(rsx! {
                 div { class: "status-details",
                     p {
@@ -1359,6 +1370,8 @@ fn StatusPanel(status: ServerStatus) -> Element {
                     pre {
                         class: "public-key",
                         "data-touch-copy": touch_copy(public_key.clone()),
+                        "data-touch-tooltip": public_key_touch_hint,
+                        "data-touch-feedback": public_key_touch_feedback,
                         "data-copy-success": public_key_copy_success,
                         "{public_key}"
                     }

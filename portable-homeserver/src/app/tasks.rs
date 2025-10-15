@@ -1,4 +1,10 @@
-use std::{future::Future, io, sync::Arc};
+use std::{
+    future::Future,
+    io,
+    net::{Ipv4Addr, SocketAddr, TcpListener},
+    sync::Arc,
+    time::Instant,
+};
 
 use anyhow::{Context, Result, anyhow};
 use dioxus::prelude::{ReadableExt, WritableExt, spawn};
@@ -11,6 +17,20 @@ use tracing::{error, warn};
 use super::state::{NetworkProfile, RunningServer, ServerInfo, ServerStatus, StartSpec};
 
 const STATIC_TESTNET_MAX_ADDR_IN_USE_RETRIES: usize = 5;
+
+const STATIC_TESTNET_PORTS: [u16; 6] = [15411, 15412, 6286, 6287, 6288, 6881];
+
+#[cfg(test)]
+const STATIC_TESTNET_PORT_RELEASE_TIMEOUT_MS: u64 = 1_000;
+
+#[cfg(not(test))]
+const STATIC_TESTNET_PORT_RELEASE_TIMEOUT_MS: u64 = 5_000;
+
+#[cfg(test)]
+const STATIC_TESTNET_PORT_POLL_INTERVAL_MS: u64 = 10;
+
+#[cfg(not(test))]
+const STATIC_TESTNET_PORT_POLL_INTERVAL_MS: u64 = 100;
 
 #[cfg(test)]
 const STATIC_TESTNET_RETRY_DELAY_MS: u64 = 0;
@@ -61,6 +81,61 @@ fn is_addr_in_use_error(err: &anyhow::Error) -> bool {
             cause.to_string().contains("Address already in use")
         }
     })
+}
+
+async fn wait_for_static_testnet_ports_to_release() -> Result<()> {
+    wait_for_ports_to_release(
+        &STATIC_TESTNET_PORTS,
+        Duration::from_millis(STATIC_TESTNET_PORT_RELEASE_TIMEOUT_MS),
+        Duration::from_millis(STATIC_TESTNET_PORT_POLL_INTERVAL_MS),
+    )
+    .await
+}
+
+async fn wait_for_ports_to_release(
+    ports: &[u16],
+    timeout: Duration,
+    poll_interval: Duration,
+) -> Result<()> {
+    let deadline = Instant::now() + timeout;
+    let mut last_blocked_port = None;
+
+    loop {
+        let mut all_ports_free = true;
+
+        for &port in ports {
+            match TcpListener::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, port))) {
+                Ok(listener) => drop(listener),
+                Err(err) => {
+                    if err.kind() == io::ErrorKind::AddrInUse {
+                        last_blocked_port = Some(port);
+                        all_ports_free = false;
+                        break;
+                    }
+
+                    return Err(err)
+                        .with_context(|| format!("Failed to probe port {port} availability"));
+                }
+            }
+        }
+
+        if all_ports_free {
+            return Ok(());
+        }
+
+        if Instant::now() >= deadline {
+            let port = last_blocked_port
+                .map(|value| value.to_string())
+                .unwrap_or_else(|| "unknown".to_string());
+            return Err(anyhow!(
+                "Ports {:?} remained bound after shutdown; last blocked port: {}",
+                ports,
+                port
+            ));
+        }
+
+        sleep(poll_interval).await;
+    }
 }
 
 /// Stop the currently running homeserver (if any) and transition the UI once the
@@ -181,8 +256,21 @@ async fn shutdown_running_server(server: RunningServer) -> Result<()> {
         }
         RunningServer::Testnet(testnet) => {
             testnet.homeserver().core().shutdown();
+            testnet.pkarr_relay().shutdown();
+
             sleep(Duration::from_millis(100)).await;
+
+            let strong_references = Arc::strong_count(&testnet);
             drop(testnet);
+
+            if strong_references > 1 {
+                warn!(
+                    strong_references,
+                    "Static testnet shutdown still has outstanding references"
+                );
+            }
+
+            wait_for_static_testnet_ports_to_release().await?;
         }
     }
 
@@ -373,5 +461,24 @@ mod tests {
             attempts.load(Ordering::SeqCst),
             STATIC_TESTNET_MAX_ADDR_IN_USE_RETRIES + 1
         );
+    }
+
+    #[tokio::test]
+    async fn static_testnet_can_restart_after_shutdown() {
+        let initial = StaticTestnet::start()
+            .await
+            .expect("initial static testnet should start");
+
+        shutdown_running_server(RunningServer::Testnet(Arc::new(initial)))
+            .await
+            .expect("static testnet shutdown should succeed");
+
+        let restarted = StaticTestnet::start()
+            .await
+            .expect("static testnet should restart cleanly");
+
+        shutdown_running_server(RunningServer::Testnet(Arc::new(restarted)))
+            .await
+            .expect("shutdown after restart should succeed");
     }
 }

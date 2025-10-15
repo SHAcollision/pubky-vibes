@@ -1,14 +1,67 @@
-use std::{future::Future, sync::Arc};
+use std::{future::Future, io, sync::Arc};
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use dioxus::prelude::{ReadableExt, WritableExt, spawn};
 use dioxus::signals::{Signal, SignalData, Storage};
 use pubky_homeserver::HomeserverSuite;
 use pubky_testnet::StaticTestnet;
 use tokio::time::{Duration, sleep};
-use tracing::error;
+use tracing::{error, warn};
 
 use super::state::{NetworkProfile, RunningServer, ServerInfo, ServerStatus, StartSpec};
+
+const STATIC_TESTNET_MAX_ADDR_IN_USE_RETRIES: usize = 5;
+
+#[cfg(test)]
+const STATIC_TESTNET_RETRY_DELAY_MS: u64 = 0;
+
+#[cfg(not(test))]
+const STATIC_TESTNET_RETRY_DELAY_MS: u64 = 200;
+
+async fn retry_addr_in_use<F, Fut, T>(mut operation: F) -> Result<T>
+where
+    F: FnMut() -> Fut,
+    Fut: Future<Output = Result<T>>,
+{
+    let mut last_addr_in_use_error: Option<anyhow::Error> = None;
+
+    for attempt in 0..=STATIC_TESTNET_MAX_ADDR_IN_USE_RETRIES {
+        match operation().await {
+            Ok(value) => return Ok(value),
+            Err(err) => {
+                if attempt < STATIC_TESTNET_MAX_ADDR_IN_USE_RETRIES && is_addr_in_use_error(&err) {
+                    warn!(
+                        attempt = attempt + 1,
+                        delay_ms = STATIC_TESTNET_RETRY_DELAY_MS,
+                        "Static testnet start failed because a port is still in use; retrying",
+                    );
+                    sleep(Duration::from_millis(STATIC_TESTNET_RETRY_DELAY_MS)).await;
+                    last_addr_in_use_error = Some(err);
+                    continue;
+                }
+
+                return Err(err);
+            }
+        }
+    }
+
+    Err(last_addr_in_use_error.unwrap_or_else(|| {
+        anyhow!(
+            "Port remained in use after {} attempts",
+            STATIC_TESTNET_MAX_ADDR_IN_USE_RETRIES + 1
+        )
+    }))
+}
+
+fn is_addr_in_use_error(err: &anyhow::Error) -> bool {
+    err.chain().any(|cause| {
+        if let Some(io_err) = cause.downcast_ref::<io::Error>() {
+            io_err.kind() == io::ErrorKind::AddrInUse
+        } else {
+            cause.to_string().contains("Address already in use")
+        }
+    })
+}
 
 /// Stop the currently running homeserver (if any) and transition the UI once the
 /// shutdown completes. Optionally runs a callback after the shutdown finishes or
@@ -159,7 +212,7 @@ async fn start_server(start_spec: StartSpec) -> Result<(RunningServer, ServerInf
             Ok((RunningServer::Mainnet(Arc::new(server)), info))
         }
         StartSpec::Testnet => {
-            let static_net = StaticTestnet::start()
+            let static_net = retry_addr_in_use(|| StaticTestnet::start())
                 .await
                 .context("StaticTestnet::start()")?;
             let homeserver = static_net.homeserver();
@@ -184,12 +237,13 @@ fn server_info_from_suite(suite: &HomeserverSuite, network: NetworkProfile) -> S
 mod tests {
     use super::*;
     use std::{
+        io,
         path::PathBuf,
         sync::atomic::{AtomicUsize, Ordering},
     };
 
     use super::super::state::{NetworkProfile, StartValidationError, resolve_start_spec};
-    use anyhow::anyhow;
+    use anyhow::{Result, anyhow};
     use dioxus::core::{RuntimeGuard, ScopeId, VNode, VirtualDom};
     use dioxus::signals::Signal;
 
@@ -248,6 +302,76 @@ mod tests {
             attempts.load(Ordering::SeqCst),
             0,
             "start task must not run"
+        );
+    }
+
+    #[tokio::test]
+    async fn retries_addr_in_use_errors_until_success() {
+        let attempts = Arc::new(AtomicUsize::new(0));
+        let attempts_for_closure = attempts.clone();
+
+        let result: Result<i32> = retry_addr_in_use(move || {
+            let attempts_for_iteration = attempts_for_closure.clone();
+
+            async move {
+                let attempt = attempts_for_iteration.fetch_add(1, Ordering::SeqCst);
+                if attempt < 2 {
+                    Err(anyhow::Error::from(io::Error::new(
+                        io::ErrorKind::AddrInUse,
+                        "still busy",
+                    )))
+                } else {
+                    Ok(42)
+                }
+            }
+        })
+        .await;
+
+        assert_eq!(attempts.load(Ordering::SeqCst), 3);
+        assert_eq!(result.expect("should succeed after retries"), 42);
+    }
+
+    #[tokio::test]
+    async fn does_not_retry_for_non_addr_in_use_errors() {
+        let attempts = Arc::new(AtomicUsize::new(0));
+        let attempts_for_closure = attempts.clone();
+
+        let result: Result<()> = retry_addr_in_use(move || {
+            let attempts_for_iteration = attempts_for_closure.clone();
+
+            async move {
+                attempts_for_iteration.fetch_add(1, Ordering::SeqCst);
+                Err(anyhow!("boom"))
+            }
+        })
+        .await;
+
+        assert!(result.is_err(), "non addr-in-use errors should bubble");
+        assert_eq!(attempts.load(Ordering::SeqCst), 1);
+    }
+
+    #[tokio::test]
+    async fn gives_up_after_configured_addr_in_use_retries() {
+        let attempts = Arc::new(AtomicUsize::new(0));
+        let attempts_for_closure = attempts.clone();
+
+        let result: Result<()> = retry_addr_in_use(move || {
+            let attempts_for_iteration = attempts_for_closure.clone();
+
+            async move {
+                attempts_for_iteration.fetch_add(1, Ordering::SeqCst);
+                Err(anyhow::Error::from(io::Error::new(
+                    io::ErrorKind::AddrInUse,
+                    "still busy",
+                )))
+            }
+        })
+        .await;
+
+        assert!(result.is_err(), "exhausted retries should return an error");
+        assert_eq!(
+            attempts.load(Ordering::SeqCst),
+            STATIC_TESTNET_MAX_ADDR_IN_USE_RETRIES + 1
         );
     }
 }

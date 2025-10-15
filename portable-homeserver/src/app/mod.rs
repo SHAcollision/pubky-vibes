@@ -1,6 +1,7 @@
 mod admin;
 mod bootstrap;
 mod config;
+mod mobile;
 mod state;
 mod status;
 mod style;

@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{future::Future, sync::Arc};
 
 use anyhow::{Context, Result};
 use dioxus::prelude::{ReadableExt, WritableExt, spawn};
@@ -63,22 +63,46 @@ pub(crate) fn stop_current_server<S1, S2, F>(
 }
 
 /// Spawn the async task that launches a homeserver and keeps the UI updated with
-/// progress and errors.
+/// progress and errors. Returns `true` when a new start task was enqueued.
 pub(crate) fn spawn_start_task<S1, S2>(
     start_spec: StartSpec,
-    mut status_signal: Signal<ServerStatus, S1>,
+    status_signal: Signal<ServerStatus, S1>,
     suite_signal: Signal<Option<RunningServer>, S2>,
-) where
+) -> bool
+where
     S1: Storage<SignalData<ServerStatus>> + 'static,
     S2: Storage<SignalData<Option<RunningServer>>> + 'static,
 {
+    spawn_start_task_with(start_spec, status_signal, suite_signal, start_server)
+}
+
+fn spawn_start_task_with<S1, S2, F, Fut>(
+    start_spec: StartSpec,
+    mut status_signal: Signal<ServerStatus, S1>,
+    suite_signal: Signal<Option<RunningServer>, S2>,
+    start_fn: F,
+) -> bool
+where
+    S1: Storage<SignalData<ServerStatus>> + 'static,
+    S2: Storage<SignalData<Option<RunningServer>>> + 'static,
+    F: FnOnce(StartSpec) -> Fut + Send + 'static,
+    Fut: Future<Output = Result<(RunningServer, ServerInfo)>> + Send + 'static,
+{
+    if matches!(
+        *status_signal.peek(),
+        ServerStatus::Starting | ServerStatus::Running(_) | ServerStatus::Stopping
+    ) {
+        return false;
+    }
+
     *status_signal.write() = ServerStatus::Starting;
 
     let mut status_for_task = status_signal;
     let mut suite_for_task = suite_signal;
+    let start_future = start_fn(start_spec);
 
     spawn(async move {
-        let result = start_server(start_spec).await;
+        let result = start_future.await;
         match result {
             Ok((suite, info)) => {
                 *suite_for_task.write() = Some(suite);
@@ -90,6 +114,8 @@ pub(crate) fn spawn_start_task<S1, S2>(
             }
         }
     });
+
+    true
 }
 
 async fn shutdown_running_server(server: RunningServer) -> Result<()> {
@@ -157,9 +183,15 @@ fn server_info_from_suite(suite: &HomeserverSuite, network: NetworkProfile) -> S
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::path::PathBuf;
+    use std::{
+        path::PathBuf,
+        sync::atomic::{AtomicUsize, Ordering},
+    };
 
     use super::super::state::{NetworkProfile, StartValidationError, resolve_start_spec};
+    use anyhow::anyhow;
+    use dioxus::core::{RuntimeGuard, ScopeId, VNode, VirtualDom};
+    use dioxus::signals::Signal;
 
     #[test]
     fn resolves_mainnet_start_spec_with_trimmed_path() {
@@ -189,5 +221,33 @@ mod tests {
     fn resolves_testnet_start_spec() {
         let spec = resolve_start_spec(NetworkProfile::Testnet, "ignored");
         assert_eq!(spec, Ok(StartSpec::Testnet));
+    }
+
+    fn empty_app() -> dioxus::core::Element {
+        VNode::empty()
+    }
+
+    #[test]
+    fn ignores_additional_start_requests_while_starting() {
+        let dom = VirtualDom::new(empty_app);
+        let runtime = dom.runtime();
+        let _guard = RuntimeGuard::new(runtime);
+
+        let status = Signal::new_in_scope(ServerStatus::Starting, ScopeId::ROOT);
+        let running = Signal::new_in_scope(None::<RunningServer>, ScopeId::ROOT);
+        let attempts = Arc::new(AtomicUsize::new(0));
+        let attempts_for_fn = attempts.clone();
+
+        let launched = spawn_start_task_with(StartSpec::Testnet, status, running, move |_spec| {
+            attempts_for_fn.fetch_add(1, Ordering::SeqCst);
+            async move { Err(anyhow!("start task should not be invoked")) }
+        });
+
+        assert!(!launched, "second launch attempt must be ignored");
+        assert_eq!(
+            attempts.load(Ordering::SeqCst),
+            0,
+            "start task must not run"
+        );
     }
 }

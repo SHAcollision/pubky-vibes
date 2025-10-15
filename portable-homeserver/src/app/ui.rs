@@ -501,6 +501,15 @@ fn OverviewTab(
                         start_disabled,
                         stop_disabled,
                         on_start: move |_| {
+                            if matches!(
+                                *status_for_start.peek(),
+                                ServerStatus::Starting
+                                    | ServerStatus::Running(_)
+                                    | ServerStatus::Stopping
+                            ) {
+                                return;
+                            }
+
                             let selection = *network_for_start.read();
                             let data_dir_value = data_dir_for_start.read().to_string();
                             let start_spec = match resolve_start_spec(selection, &data_dir_value) {
@@ -512,7 +521,7 @@ fn OverviewTab(
                             };
 
                             running_for_start.write().take();
-                            spawn_start_task(start_spec, status_for_start, running_for_start);
+                            let _ = spawn_start_task(start_spec, status_for_start, running_for_start);
                         },
                         on_stop: move |_| {
                             stop_current_server(status_for_stop, running_for_stop, None::<fn()>);
@@ -629,7 +638,7 @@ fn ConfigurationTab(
                                     status_for_save,
                                     running_for_save,
                                     Some(move || {
-                                        spawn_start_task(
+                                        let _ = spawn_start_task(
                                             start_spec,
                                             status_for_save,
                                             running_for_save,

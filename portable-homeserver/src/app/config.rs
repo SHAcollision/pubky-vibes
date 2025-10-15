@@ -244,21 +244,31 @@ fn android_files_dir() -> Option<PathBuf> {
     let context = android_context();
     let vm = ManuallyDrop::new(unsafe { JavaVM::from_raw(context.vm().cast()) }.ok()?);
     let env = (&*vm).attach_current_thread().ok()?;
-    let activity = unsafe { JObject::from_raw(context.context() as jni::sys::jobject) };
+    let activity =
+        ManuallyDrop::new(unsafe { JObject::from_raw(context.context() as jni::sys::jobject) });
+    let activity_ref: &JObject<'_> = &*activity;
 
-    let internal = call_path_method(&env, &activity, "getFilesDir", "()Ljava/io/File;", &[]);
+    let no_args: &[JValue<'_, '_>] = &[];
+    let internal = call_path_method(
+        &env,
+        activity_ref,
+        "getFilesDir",
+        "()Ljava/io/File;",
+        no_args,
+    );
     if let Some(path) = internal {
         if !path.as_os_str().is_empty() {
             return Some(path);
         }
     }
 
+    let null = JObject::null();
     call_path_method(
         &env,
-        &activity,
+        activity_ref,
         "getExternalFilesDir",
         "(Ljava/lang/String;)Ljava/io/File;",
-        &[JValue::Object(JObject::null())],
+        &[JValue::Object(&null)],
     )
 }
 
@@ -278,7 +288,7 @@ fn call_path_method(
     activity: &JObject<'_>,
     method: &str,
     signature: &str,
-    args: &[JValue<'_>],
+    args: &[JValue<'_, '_>],
 ) -> Option<PathBuf> {
     let file_obj = env
         .call_method(activity, method, signature, args)
@@ -289,8 +299,14 @@ fn call_path_method(
         return None;
     }
 
+    let no_args: &[JValue<'_, '_>] = &[];
     let absolute = env
-        .call_method(&file_obj, "getAbsolutePath", "()Ljava/lang/String;", &[])
+        .call_method(
+            &file_obj,
+            "getAbsolutePath",
+            "()Ljava/lang/String;",
+            no_args,
+        )
         .ok()?
         .l()
         .ok()?;

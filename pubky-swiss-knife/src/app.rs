@@ -4,9 +4,10 @@ use pubky::{Keypair, PubkyAuthFlow, PubkySession};
 use crate::components::{NetworkToggleOption, TabButton};
 use crate::style::APP_STYLE;
 use crate::tabs::{
-    AuthTabState, HttpTabState, KeysTabState, PkdnsTabState, SessionsTabState, StorageTabState,
-    TokensTabState, render_auth_tab, render_http_tab, render_keys_tab, render_pkdns_tab,
-    render_sessions_tab, render_storage_tab, render_tokens_tab,
+    AuthTabState, HttpTabState, KeysTabState, PkdnsTabState, SessionsTabState, SocialTabState,
+    StorageTabState, TokensTabState, render_auth_tab, render_http_tab, render_keys_tab,
+    render_pkdns_tab, render_sessions_tab, render_social_tab, render_storage_tab,
+    render_tokens_tab,
 };
 use crate::utils::logging::{ActivityLog, LogEntry};
 use crate::utils::mobile::{MobileEnhancementsScript, touch_tooltip};
@@ -37,17 +38,19 @@ pub enum Tab {
     Pkdns,
     Auth,
     Storage,
+    Social,
     Http,
 }
 
 impl Tab {
-    pub const ALL: [Tab; 7] = [
+    pub const ALL: [Tab; 8] = [
         Tab::Keys,
         Tab::Tokens,
         Tab::Sessions,
         Tab::Pkdns,
         Tab::Auth,
         Tab::Storage,
+        Tab::Social,
         Tab::Http,
     ];
 
@@ -59,6 +62,7 @@ impl Tab {
             Tab::Pkdns => "PKDNS",
             Tab::Auth => "Auth Flows",
             Tab::Storage => "Storage",
+            Tab::Social => "Social",
             Tab::Http => "Raw Requests",
         }
     }
@@ -101,6 +105,12 @@ impl Tab {
                     r#"M5.25 14.25h13.5m-13.5 0a3 3 0 0 1-3-3m3 3a3 3 0 1 0 0 6h13.5a3 3 0 1 0 0-6m-16.5-3a3 3 0 0 1 3-3h13.5a3 3 0 0 1 3 3m-19.5 0a4.5 4.5 0 0 1 .9-2.7L5.737 5.1a3.375 3.375 0 0 1 2.7-1.35h7.126c1.062 0 2.062.5 2.7 1.35l2.587 3.45a4.5 4.5 0 0 1 .9 2.7m0 0a3 3 0 0 1-3 3m0 3h.008v.008h-.008v-.008Zm0-6h.008v.008h-.008v-.008Zm-3 6h.008v.008h-.008v-.008Zm0-6h.008v.008h-.008v-.008Z"#,
                 ],
             ),
+            Tab::Social => (
+                "0 0 24 24",
+                &[
+                    r#"M5.25 8.25H20.25M3.75 15.75H18.75M16.95 2.25L13.05 21.75M10.9503 2.25L7.05029 21.75"#,
+                ],
+            ),
             Tab::Http => (
                 "0 0 24 24",
                 &[
@@ -108,6 +118,10 @@ impl Tab {
                 ],
             ),
         }
+    }
+
+    pub fn requires_session(self) -> bool {
+        matches!(self, Tab::Social)
     }
 }
 
@@ -177,6 +191,27 @@ pub fn App() -> Element {
         public_response: use_signal(String::new),
     };
 
+    let social_state = SocialTabState {
+        session: session.clone(),
+        profile_name: use_signal(String::new),
+        profile_bio: use_signal(String::new),
+        profile_image: use_signal(String::new),
+        profile_status: use_signal(String::new),
+        profile_links: use_signal(String::new),
+        profile_error: use_signal(String::new),
+        profile_response: use_signal(String::new),
+        post_content: use_signal(String::new),
+        post_kind: use_signal(|| String::from("short")),
+        post_parent: use_signal(String::new),
+        post_embed_kind: use_signal(String::new),
+        post_embed_uri: use_signal(String::new),
+        post_attachments: use_signal(String::new),
+        post_response: use_signal(String::new),
+        tag_uri: use_signal(String::new),
+        tag_label: use_signal(String::new),
+        tag_response: use_signal(String::new),
+    };
+
     let http_state = HttpTabState {
         method: use_signal(|| String::from("GET")),
         url: use_signal(|| String::from("https://")),
@@ -184,6 +219,12 @@ pub fn App() -> Element {
         body: use_signal(String::new),
         response: use_signal(String::new),
     };
+
+    let has_session = session.read().is_some();
+    if matches!(*active_tab.read(), Tab::Social) && !has_session {
+        let mut reset_tab = active_tab.clone();
+        reset_tab.set(Tab::Keys);
+    }
 
     if !*pubky_bootstrapped.read() {
         pubky_bootstrapped.set(true);
@@ -251,7 +292,11 @@ pub fn App() -> Element {
             }
             main {
                 nav { class: "tabs",
-                    for tab in Tab::ALL {
+                    for tab in Tab::ALL
+                        .iter()
+                        .copied()
+                        .filter(|tab| !tab.requires_session() || has_session)
+                    {
                         TabButton { tab, active_tab: active_tab.clone() }
                     }
                 }
@@ -277,6 +322,11 @@ pub fn App() -> Element {
                         Tab::Storage => render_storage_tab(
                             pubky_facade.clone(),
                             storage_state.clone(),
+                            activity_log.clone(),
+                        ),
+                        Tab::Social => render_social_tab(
+                            pubky_facade.clone(),
+                            social_state.clone(),
                             activity_log.clone(),
                         ),
                         Tab::Http => render_http_tab(

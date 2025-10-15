@@ -11,6 +11,7 @@ use super::config::{
     ConfigFeedback, ConfigForm, ConfigState, config_state_from_dir, default_data_dir,
     load_config_form_from_dir, modify_config_form, persist_config_form,
 };
+use super::mobile::{MobileEnhancementsScript, is_android_touch, touch_copy};
 use super::state::{NetworkProfile, RunningServer, ServerStatus, resolve_start_spec};
 use super::status::{StatusCopy, StatusDetails, status_copy, status_details};
 use super::style::STYLE;
@@ -360,6 +361,7 @@ pub fn App() -> Element {
     let config_for_admin = config_state;
 
     rsx! {
+        MobileEnhancementsScript {}
         style { "{STYLE}" }
         main { class: "app",
             div { class: "app-shell",
@@ -689,6 +691,12 @@ fn AdminPanel(
     let status_snapshot = status.read().clone();
     let admin_snapshot = admin_state.read().clone();
 
+    let signup_token_copy_success = if is_android_touch() {
+        Some(String::from("Copied signup token"))
+    } else {
+        None
+    };
+
     let info_section = match &admin_snapshot.info {
         FetchState::Idle => match status_snapshot {
             ServerStatus::Running(_) => rsx! {
@@ -934,7 +942,12 @@ fn AdminPanel(
                         div { class: "admin-feedback {feedback.class()}", "{feedback.message()}" }
                     }
                     if let Some(token) = admin_snapshot.signup_token.clone() {
-                        pre { class: "token-display", "{token}" }
+                        pre {
+                            class: "token-display",
+                            "data-touch-copy": touch_copy(token.clone()),
+                            "data-copy-success": signup_token_copy_success.clone(),
+                            "{token}"
+                        }
                     }
                 }
                 div { class: "admin-card",
@@ -1309,38 +1322,50 @@ fn StatusPanel(status: ServerStatus) -> Element {
             icann_url,
             pubky_url,
             public_key,
-        } => Some(rsx! {
-            div { class: "status-details",
-                p {
-                    strong { "Network:" }
-                    " {network_label}"
-                }
-                if let Some(hint) = network_hint {
-                    p { "{hint}" }
-                }
-                p { "Share these endpoints or bookmark them for later:" }
-                ul {
-                    li {
-                        strong { "Admin API:" }
-                        " "
-                        a { href: "{admin_url}", target: "_blank", rel: "noreferrer", "{admin_url}" }
+        } => {
+            let public_key_copy_success = if is_android_touch() {
+                Some(String::from("Copied homeserver public key"))
+            } else {
+                None
+            };
+            Some(rsx! {
+                div { class: "status-details",
+                    p {
+                        strong { "Network:" }
+                        " {network_label}"
                     }
-                    li {
-                        strong { "ICANN HTTP:" }
-                        " "
-                        a { href: "{icann_url}", target: "_blank", rel: "noreferrer", "{icann_url}" }
+                    if let Some(hint) = network_hint {
+                        p { "{hint}" }
                     }
-                    li {
-                        strong { "Pubky TLS:" }
-                        " "
-                        a { href: "{pubky_url}", target: "_blank", rel: "noreferrer", "{pubky_url}" }
+                    p { "Share these endpoints or bookmark them for later:" }
+                    ul {
+                        li {
+                            strong { "Admin API:" }
+                            " "
+                            a { href: "{admin_url}", target: "_blank", rel: "noreferrer", "{admin_url}" }
+                        }
+                        li {
+                            strong { "ICANN HTTP:" }
+                            " "
+                            a { href: "{icann_url}", target: "_blank", rel: "noreferrer", "{icann_url}" }
+                        }
+                        li {
+                            strong { "Pubky TLS:" }
+                            " "
+                            a { href: "{pubky_url}", target: "_blank", rel: "noreferrer", "{pubky_url}" }
+                        }
                     }
+                    p { "Public key:" }
+                    pre {
+                        class: "public-key",
+                        "data-touch-copy": touch_copy(public_key.clone()),
+                        "data-copy-success": public_key_copy_success,
+                        "{public_key}"
+                    }
+                    p { "Anyone can reach your agent with the public key above." }
                 }
-                p { "Public key:" }
-                pre { class: "public-key", "{public_key}" }
-                p { "Anyone can reach your agent with the public key above." }
-            }
-        }),
+            })
+        }
         StatusDetails::Error { message } => Some(rsx! {
             div { class: "status-details",
                 p { "Check that the directory is writable and the config is valid." }

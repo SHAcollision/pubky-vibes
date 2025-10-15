@@ -243,14 +243,14 @@ fn android_default_data_dir() -> Option<String> {
 fn android_files_dir() -> Option<PathBuf> {
     let context = android_context();
     let vm = ManuallyDrop::new(unsafe { JavaVM::from_raw(context.vm().cast()) }.ok()?);
-    let env = (&*vm).attach_current_thread().ok()?;
+    let mut env = (&*vm).attach_current_thread().ok()?;
     let activity =
         ManuallyDrop::new(unsafe { JObject::from_raw(context.context() as jni::sys::jobject) });
     let activity_ref: &JObject<'_> = &*activity;
 
     let no_args: &[JValue<'_, '_>] = &[];
     let internal = call_path_method(
-        &env,
+        &mut env,
         activity_ref,
         "getFilesDir",
         "()Ljava/io/File;",
@@ -264,7 +264,7 @@ fn android_files_dir() -> Option<PathBuf> {
 
     let null = JObject::null();
     call_path_method(
-        &env,
+        &mut env,
         activity_ref,
         "getExternalFilesDir",
         "(Ljava/lang/String;)Ljava/io/File;",
@@ -284,7 +284,7 @@ fn android_home_dir() -> Option<PathBuf> {
 
 #[cfg(target_os = "android")]
 fn call_path_method(
-    env: &JNIEnv<'_>,
+    env: &mut JNIEnv<'_>,
     activity: &JObject<'_>,
     method: &str,
     signature: &str,

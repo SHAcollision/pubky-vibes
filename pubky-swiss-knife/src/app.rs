@@ -122,10 +122,6 @@ impl Tab {
             ),
         }
     }
-
-    pub fn requires_session(self) -> bool {
-        matches!(self, Tab::Social)
-    }
 }
 
 #[allow(non_snake_case, clippy::clone_on_copy)]
@@ -223,11 +219,6 @@ pub fn App() -> Element {
         response: use_signal(String::new),
     };
 
-    let has_session = session.read().is_some();
-    if matches!(*active_tab.read(), Tab::Social) && !has_session {
-        let mut reset_tab = active_tab.clone();
-        reset_tab.set(Tab::Keys);
-    }
     let mut session_homeserver_prefill = sessions_state.homeserver.clone();
     let network_signal_for_prefill = network_mode.clone();
     use_effect(move || {
@@ -302,11 +293,7 @@ pub fn App() -> Element {
             }
             main {
                 nav { class: "tabs",
-                    for tab in Tab::ALL
-                        .iter()
-                        .copied()
-                        .filter(|tab| !tab.requires_session() || has_session)
-                    {
+                    for tab in Tab::ALL.iter().copied() {
                         TabButton { tab, active_tab: active_tab.clone() }
                     }
                 }

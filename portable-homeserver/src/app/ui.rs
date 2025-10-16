@@ -693,7 +693,7 @@ fn LogsTab() -> Element {
 
     if !*listener_started.read() {
         *listener_started.write() = true;
-        let mut signal_for_task = log_entries.clone();
+        let mut signal_for_task = log_entries;
         let store_for_task = store.clone();
         spawn(async move {
             let mut receiver = store_for_task.subscribe();

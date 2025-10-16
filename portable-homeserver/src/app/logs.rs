@@ -36,7 +36,7 @@ pub(crate) fn init_logging() -> Result<LogStore> {
     let fmt_layer = layer()
         .with_target(true)
         .with_level(true)
-        .with_writer(|| std::io::stdout());
+        .with_writer(std::io::stdout);
 
     tracing_subscriber::registry()
         .with(env_filter)

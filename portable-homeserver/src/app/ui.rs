@@ -6,7 +6,7 @@ use dioxus::signals::{Signal, SyncStorage};
 use pubky_homeserver::SignupMode;
 use tokio::time::{Duration, sleep};
 
-use super::admin::{self, AdminInfo};
+use super::admin::{self, AdminClient, AdminInfo};
 use super::config::{
     ConfigFeedback, ConfigForm, ConfigState, config_state_from_dir, default_data_dir,
     load_config_form_from_dir, modify_config_form, persist_config_form,
@@ -125,6 +125,7 @@ struct AdminPanelState {
     signup_in_flight: bool,
     delete_form: DeleteEntryFormState,
     disable_form: DisableUserFormState,
+    client: AdminClient,
 }
 
 impl Default for AdminPanelState {
@@ -139,6 +140,7 @@ impl Default for AdminPanelState {
             signup_in_flight: false,
             delete_form: DeleteEntryFormState::default(),
             disable_form: DisableUserFormState::default(),
+            client: AdminClient::new(),
         }
     }
 }
@@ -154,6 +156,10 @@ impl AdminPanelState {
     fn bump_info_refresh(&mut self) {
         self.info_refresh_nonce = self.info_refresh_nonce.wrapping_add(1);
     }
+
+    fn admin_client(&self) -> AdminClient {
+        self.client.clone()
+    }
 }
 
 async fn poll_admin_info(
@@ -168,9 +174,13 @@ async fn poll_admin_info(
 
     loop {
         let status_snapshot = status.read().clone();
-        let (password, nonce) = {
+        let (password, nonce, client) = {
             let state = admin_state.read();
-            (state.password.clone(), state.info_refresh_nonce)
+            (
+                state.password.clone(),
+                state.info_refresh_nonce,
+                state.admin_client(),
+            )
         };
 
         match status_snapshot {
@@ -207,7 +217,7 @@ async fn poll_admin_info(
                             state.info = FetchState::Loading;
                         }
 
-                        let result = admin::fetch_info(&admin_url, &password).await;
+                        let result = admin::fetch_info(&client, &admin_url, &password).await;
                         match result {
                             Ok(info) => {
                                 let mut state = admin_state.write();
@@ -269,9 +279,13 @@ fn toggle_user_access(
     let status_snapshot = status.read().clone();
     if let ServerStatus::Running(info) = status_snapshot {
         let admin_url = info.admin_url.clone();
-        let (password, pubkey) = {
+        let (password, pubkey, client) = {
             let state = admin_state.read();
-            (state.password.clone(), state.disable_form.pubkey.clone())
+            (
+                state.password.clone(),
+                state.disable_form.pubkey.clone(),
+                state.admin_client(),
+            )
         };
 
         if password.trim().is_empty() {
@@ -302,7 +316,8 @@ fn toggle_user_access(
 
         let mut admin_state_task = admin_state;
         spawn(async move {
-            let result = admin::toggle_user_disabled(&admin_url, &password, &pubkey, disable).await;
+            let result =
+                admin::toggle_user_disabled(&client, &admin_url, &password, &pubkey, disable).await;
             let mut state = admin_state_task.write();
             state.disable_form.in_flight = false;
             match result {
@@ -790,9 +805,9 @@ fn AdminPanel(
         let status_snapshot = status_for_token.read().clone();
         if let ServerStatus::Running(info) = status_snapshot {
             let admin_url = info.admin_url.clone();
-            let password = {
+            let (password, client) = {
                 let state = admin_state_for_token.read();
-                state.password.clone()
+                (state.password.clone(), state.admin_client())
             };
 
             if password.trim().is_empty() {
@@ -814,7 +829,7 @@ fn AdminPanel(
 
             let mut admin_state_task = admin_state_for_token;
             spawn(async move {
-                let result = admin::generate_signup_token(&admin_url, &password).await;
+                let result = admin::generate_signup_token(&client, &admin_url, &password).await;
                 let mut state = admin_state_task.write();
                 match result {
                     Ok(token) => {
@@ -847,12 +862,13 @@ fn AdminPanel(
         let status_snapshot = status_for_delete.read().clone();
         if let ServerStatus::Running(info) = status_snapshot {
             let admin_url = info.admin_url.clone();
-            let (password, pubkey, entry_path) = {
+            let (password, pubkey, entry_path, client) = {
                 let state = admin_state_for_delete.read();
                 (
                     state.password.clone(),
                     state.delete_form.pubkey.clone(),
                     state.delete_form.entry_path.clone(),
+                    state.admin_client(),
                 )
             };
 
@@ -881,7 +897,7 @@ fn AdminPanel(
 
             let mut admin_state_task = admin_state_for_delete;
             spawn(async move {
-                let result = admin::delete_entry(&admin_url, &password, &target).await;
+                let result = admin::delete_entry(&client, &admin_url, &password, &target).await;
                 let mut state = admin_state_task.write();
                 state.delete_form.in_flight = false;
                 match result {

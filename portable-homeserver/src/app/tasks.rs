@@ -1,7 +1,7 @@
 use std::{
     future::Future,
     io,
-    net::{Ipv4Addr, SocketAddr, TcpListener},
+    net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, TcpListener},
     sync::Arc,
     time::Instant,
 };
@@ -11,6 +11,7 @@ use dioxus::prelude::{ReadableExt, WritableExt, spawn};
 use dioxus::signals::{Signal, SignalData, Storage};
 use pubky_homeserver::HomeserverSuite;
 use pubky_testnet::StaticTestnet;
+use reqwest::Url;
 use tokio::time::{Duration, sleep};
 use tracing::{error, warn};
 
@@ -21,16 +22,16 @@ const STATIC_TESTNET_MAX_ADDR_IN_USE_RETRIES: usize = 5;
 const STATIC_TESTNET_PORTS: [u16; 6] = [15411, 15412, 6286, 6287, 6288, 6881];
 
 #[cfg(test)]
-const STATIC_TESTNET_PORT_RELEASE_TIMEOUT_MS: u64 = 1_000;
+const PORT_RELEASE_TIMEOUT_MS: u64 = 1_000;
 
 #[cfg(not(test))]
-const STATIC_TESTNET_PORT_RELEASE_TIMEOUT_MS: u64 = 5_000;
+const PORT_RELEASE_TIMEOUT_MS: u64 = 5_000;
 
 #[cfg(test)]
-const STATIC_TESTNET_PORT_POLL_INTERVAL_MS: u64 = 10;
+const PORT_POLL_INTERVAL_MS: u64 = 10;
 
 #[cfg(not(test))]
-const STATIC_TESTNET_PORT_POLL_INTERVAL_MS: u64 = 100;
+const PORT_POLL_INTERVAL_MS: u64 = 100;
 
 #[cfg(test)]
 const STATIC_TESTNET_RETRY_DELAY_MS: u64 = 0;
@@ -86,8 +87,8 @@ fn is_addr_in_use_error(err: &anyhow::Error) -> bool {
 async fn wait_for_static_testnet_ports_to_release() -> Result<()> {
     wait_for_ports_to_release(
         &STATIC_TESTNET_PORTS,
-        Duration::from_millis(STATIC_TESTNET_PORT_RELEASE_TIMEOUT_MS),
-        Duration::from_millis(STATIC_TESTNET_PORT_POLL_INTERVAL_MS),
+        Duration::from_millis(PORT_RELEASE_TIMEOUT_MS),
+        Duration::from_millis(PORT_POLL_INTERVAL_MS),
     )
     .await
 }
@@ -104,15 +105,14 @@ async fn wait_for_ports_to_release(
         let mut all_ports_free = true;
 
         for &port in ports {
-            match TcpListener::bind(SocketAddr::from((Ipv4Addr::UNSPECIFIED, port))) {
-                Ok(listener) => drop(listener),
+            match probe_port_availability(port) {
+                Ok(true) => {}
+                Ok(false) => {
+                    last_blocked_port = Some(port);
+                    all_ports_free = false;
+                    break;
+                }
                 Err(err) => {
-                    if err.kind() == io::ErrorKind::AddrInUse {
-                        last_blocked_port = Some(port);
-                        all_ports_free = false;
-                        break;
-                    }
-
                     return Err(err)
                         .with_context(|| format!("Failed to probe port {port} availability"));
                 }
@@ -124,18 +124,70 @@ async fn wait_for_ports_to_release(
         }
 
         if Instant::now() >= deadline {
-            let port = last_blocked_port
-                .map(|value| value.to_string())
-                .unwrap_or_else(|| "unknown".to_string());
+            if let Some(port) = last_blocked_port {
+                let wait_ms = timeout.as_millis();
+                return Err(anyhow!(
+                    "Port {port} remained in use after waiting {wait_ms} ms"
+                ));
+            }
+
+            let wait_ms = timeout.as_millis();
             return Err(anyhow!(
-                "Ports {:?} remained bound after shutdown; last blocked port: {}",
-                ports,
-                port
+                "At least one configured port remained in use after waiting {wait_ms} ms"
             ));
         }
 
         sleep(poll_interval).await;
     }
+}
+
+fn probe_port_availability(port: u16) -> io::Result<bool> {
+    let candidates = [
+        SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), port),
+        SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), port),
+    ];
+
+    for addr in candidates {
+        match TcpListener::bind(addr) {
+            Ok(listener) => drop(listener),
+            Err(err) if err.kind() == io::ErrorKind::AddrInUse => return Ok(false),
+            Err(err) if matches!(addr, SocketAddr::V6(_)) && ipv6_probe_unsupported(&err) => {
+                continue;
+            }
+            Err(err) => return Err(err),
+        }
+    }
+
+    Ok(true)
+}
+
+fn ipv6_probe_unsupported(err: &io::Error) -> bool {
+    matches!(
+        err.kind(),
+        io::ErrorKind::AddrNotAvailable | io::ErrorKind::Unsupported
+    ) || matches!(
+        err.raw_os_error(),
+        Some(code) if matches!(code, 97 | 99 | 10047 | 10049)
+    )
+}
+
+fn mainnet_ports(server: &HomeserverSuite) -> Result<Vec<u16>> {
+    let admin_port = server.admin().listen_socket().port();
+
+    let icann_port = Url::parse(&server.core().icann_http_url())
+        .context("Failed to parse ICANN HTTP URL exposed by the running homeserver")?
+        .port_or_known_default()
+        .ok_or_else(|| anyhow!("ICANN HTTP endpoint did not advertise a port"))?;
+
+    let pubky_port = Url::parse(&server.core().pubky_tls_ip_url())
+        .context("Failed to parse Pubky TLS URL exposed by the running homeserver")?
+        .port_or_known_default()
+        .ok_or_else(|| anyhow!("Pubky TLS endpoint did not advertise a port"))?;
+
+    let mut ports = vec![admin_port, icann_port, pubky_port];
+    ports.sort_unstable();
+    ports.dedup();
+    Ok(ports)
 }
 
 /// Stop the currently running homeserver (if any) and transition the UI once the
@@ -249,10 +301,27 @@ where
 async fn shutdown_running_server(server: RunningServer) -> Result<()> {
     match server {
         RunningServer::Mainnet(handle) => {
+            let ports = mainnet_ports(&handle)?;
             handle.core().shutdown();
             // Give the runtime a moment to flush sockets.
             sleep(Duration::from_millis(100)).await;
+
+            let strong_references = Arc::strong_count(&handle);
             drop(handle);
+
+            if strong_references > 1 {
+                warn!(
+                    strong_references,
+                    "Mainnet shutdown still has outstanding references"
+                );
+            }
+
+            wait_for_ports_to_release(
+                &ports,
+                Duration::from_millis(PORT_RELEASE_TIMEOUT_MS),
+                Duration::from_millis(PORT_POLL_INTERVAL_MS),
+            )
+            .await?;
         }
         RunningServer::Testnet(testnet) => {
             testnet.homeserver().core().shutdown();

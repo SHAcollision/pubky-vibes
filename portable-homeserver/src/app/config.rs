@@ -2,6 +2,7 @@
 use std::mem::ManuallyDrop;
 use std::{
     env, fs,
+    io::Write,
     net::{IpAddr, SocketAddr},
     path::{Path, PathBuf},
     str::FromStr,
@@ -11,8 +12,9 @@ use anyhow::{Context, Result, anyhow};
 use dioxus::prelude::WritableExt;
 use dioxus::signals::{Signal, SignalData, Storage};
 #[cfg(not(target_os = "android"))]
-use directories::ProjectDirs;
+use directories::{BaseDirs, ProjectDirs};
 use pubky_homeserver::{ConfigToml, Domain, LoggingToml, SignupMode};
+use tempfile::NamedTempFile;
 
 #[cfg(target_os = "android")]
 use jni::{
@@ -171,8 +173,24 @@ pub(crate) fn persist_config_form(
 
     let rendered =
         toml::to_string_pretty(&config).context("Failed to render config as TOML text")?;
-    fs::write(&config_path, rendered)
-        .with_context(|| format!("Failed to write {}", config_path.display()))?;
+    let mut temp_file = NamedTempFile::new_in(&dir_path)
+        .with_context(|| format!("Failed to create temporary file in {}", dir_path.display()))?;
+    temp_file.write_all(rendered.as_bytes()).with_context(|| {
+        format!(
+            "Failed to write temporary config for {}",
+            config_path.display()
+        )
+    })?;
+    temp_file.flush().with_context(|| {
+        format!(
+            "Failed to flush temporary config for {}",
+            config_path.display()
+        )
+    })?;
+    temp_file
+        .persist(&config_path)
+        .map_err(|err| err.error)
+        .with_context(|| format!("Failed to persist {}", config_path.display()))?;
 
     Ok(ConfigPersistOutcome::Updated)
 }
@@ -222,14 +240,25 @@ pub(crate) fn default_data_dir() -> String {
     {
         if let Some(project_dirs) = ProjectDirs::from("io", "Pubky", "PortableHomeserver") {
             project_dirs.data_dir().to_string_lossy().into_owned()
-        } else {
-            let mut fallback = env::var_os("HOME")
-                .map(PathBuf::from)
-                .unwrap_or_else(|| PathBuf::from("."));
-            fallback.push(".pubky");
+        } else if let Some(base_dirs) = BaseDirs::new() {
+            let mut fallback = base_dirs.data_dir().to_path_buf();
+            fallback.push("Pubky");
+            fallback.push("PortableHomeserver");
             fallback.to_string_lossy().into_owned()
+        } else if let Some(home) = fallback_home_dir() {
+            home.join(".pubky").to_string_lossy().into_owned()
+        } else {
+            String::new()
         }
     }
+}
+
+#[cfg(not(target_os = "android"))]
+fn fallback_home_dir() -> Option<PathBuf> {
+    BaseDirs::new()
+        .map(|dirs| dirs.home_dir().to_path_buf())
+        .or_else(|| env::var_os("HOME").map(PathBuf::from))
+        .or_else(|| env::var_os("USERPROFILE").map(PathBuf::from))
 }
 
 #[cfg(target_os = "android")]

@@ -1,6 +1,7 @@
 mod admin;
 mod bootstrap;
 mod config;
+pub(crate) mod logs;
 mod mobile;
 mod state;
 mod status;

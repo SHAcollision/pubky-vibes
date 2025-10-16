@@ -5,12 +5,14 @@ use dioxus::prelude::{spawn, *};
 use dioxus::signals::{Signal, SyncStorage};
 use pubky_homeserver::SignupMode;
 use tokio::time::{Duration, sleep};
+use tracing::Level;
 
 use super::admin::{self, AdminInfo};
 use super::config::{
     ConfigFeedback, ConfigForm, ConfigState, config_state_from_dir, default_data_dir,
     load_config_form_from_dir, modify_config_form, persist_config_form,
 };
+use super::logs;
 use super::mobile::{MobileEnhancementsScript, is_android_touch, touch_copy};
 use super::state::{NetworkProfile, RunningServer, ServerStatus, resolve_start_spec};
 use super::status::{StatusCopy, StatusDetails, status_copy, status_details};
@@ -76,16 +78,18 @@ enum AppTab {
     Overview,
     Configuration,
     Admin,
+    Logs,
 }
 
 impl AppTab {
-    const ALL: [Self; 3] = [Self::Overview, Self::Configuration, Self::Admin];
+    const ALL: [Self; 4] = [Self::Overview, Self::Configuration, Self::Admin, Self::Logs];
 
     fn label(self) -> &'static str {
         match self {
             Self::Overview => "Overview",
             Self::Configuration => "Configuration",
             Self::Admin => "Admin tools",
+            Self::Logs => "Logs",
         }
     }
 
@@ -108,6 +112,13 @@ impl AppTab {
                 "0 0 24 24",
                 &[
                     r#"M9 12.75 11.25 15 15 9.75M12 3.75l-7.5 3v4.5c0 5.25 3.75 8.25 7.5 9 3.75-.75 7.5-3.75 7.5-9v-4.5l-7.5-3Z"#,
+                ],
+            ),
+            Self::Logs => (
+                "0 0 24 24",
+                &[
+                    r#"M4.5 5.25h15m-15 5.25h9m-9 5.25h15"#,
+                    r#"M8.25 4.5v12.75a2.25 2.25 0 0 0 2.25 2.25h6.75"#,
                 ],
             ),
         }
@@ -397,6 +408,9 @@ pub fn App() -> Element {
                                 config_state: config_for_admin,
                             }
                         },
+                        AppTab::Logs => rsx! {
+                            LogsTab {}
+                        },
                     }
                 }
             }
@@ -667,6 +681,93 @@ fn AdminTab(
     rsx! {
         section { class: "tab-section admin",
             AdminPanel { status, config_state }
+        }
+    }
+}
+
+#[component]
+fn LogsTab() -> Element {
+    let store = logs::log_store();
+    let log_entries = use_signal_sync(|| store.snapshot());
+    let mut listener_started = use_signal_sync(|| false);
+
+    if !*listener_started.read() {
+        *listener_started.write() = true;
+        let mut signal_for_task = log_entries;
+        let store_for_task = store.clone();
+        spawn(async move {
+            let mut receiver = store_for_task.subscribe();
+            loop {
+                match receiver.recv().await {
+                    Ok(entry) => {
+                        let capacity = store_for_task.capacity();
+                        let mut entries = signal_for_task.write();
+                        if entries.len() >= capacity {
+                            let overflow = entries.len() + 1 - capacity;
+                            entries.drain(0..overflow);
+                        }
+                        entries.push(entry);
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Lagged(_)) => {
+                        *signal_for_task.write() = store_for_task.snapshot();
+                    }
+                    Err(tokio::sync::broadcast::error::RecvError::Closed) => break,
+                }
+            }
+        });
+    }
+
+    let entries_snapshot = log_entries.read().clone();
+    let entry_count = entries_snapshot.len();
+    let count_label = if entry_count == 1 {
+        String::from("1 message captured")
+    } else {
+        format!("{entry_count} messages captured")
+    };
+
+    let content = if entries_snapshot.is_empty() {
+        rsx! {
+            div { class: "logs-empty",
+                h3 { "No diagnostics yet" }
+                p { "Logs will appear here once the homeserver starts emitting tracing events." }
+            }
+        }
+    } else {
+        rsx! {
+            div { class: "logs-stream",
+                for entry in entries_snapshot.iter() {
+                    div { class: "log-entry {log_level_class(&entry.level)}", key: "{entry.sequence}",
+                        div { class: "log-meta",
+                            span { class: "log-timestamp", "{entry.formatted_timestamp}" }
+                            span { class: "log-level", "{entry.level}" }
+                            span { class: "log-target", "{entry.target}" }
+                        }
+                        div { class: "log-message", "{entry.message}" }
+                        if !entry.fields.is_empty() {
+                            ul { class: "log-fields",
+                                for field in &entry.fields {
+                                    li { key: "{entry.sequence}-{field.name}",
+                                        span { class: "log-field-name", "{field.name}" }
+                                        span { class: "log-field-value", "{field.value}" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    };
+
+    rsx! {
+        section { class: "tab-section logs",
+            div { class: "logs-layout",
+                div { class: "logs-header",
+                    h2 { "Diagnostics" }
+                    span { class: "logs-count", "{count_label}" }
+                }
+                div { class: "logs-body", {content} }
+            }
         }
     }
 }
@@ -1410,5 +1511,15 @@ fn StatusPanel(status: ServerStatus) -> Element {
             p { "{summary}" }
             {details_section}
         }
+    }
+}
+
+fn log_level_class(level: &Level) -> &'static str {
+    match *level {
+        Level::TRACE => "log-trace",
+        Level::DEBUG => "log-debug",
+        Level::INFO => "log-info",
+        Level::WARN => "log-warn",
+        Level::ERROR => "log-error",
     }
 }

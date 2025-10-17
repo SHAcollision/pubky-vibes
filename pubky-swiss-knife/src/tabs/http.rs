@@ -1,6 +1,5 @@
 use anyhow::anyhow;
 use dioxus::prelude::*;
-use pubky::PubkyHttpClient;
 use reqwest::Method;
 use reqwest::header::HeaderName;
 use url::Url;
@@ -10,6 +9,7 @@ use crate::tabs::HttpTabState;
 use crate::utils::http::format_response;
 use crate::utils::logging::ActivityLog;
 use crate::utils::mobile::{is_android_touch, touch_copy_option, touch_tooltip};
+use crate::utils::transport::build_pubky_http_client;
 
 pub fn render_http_tab(
     network_mode: Signal<NetworkMode>,
@@ -138,10 +138,7 @@ pub fn render_http_tab(
                                         .map_err(|e| anyhow!("Invalid HTTP method: {e}"))?;
                                     let parsed_url = Url::parse(&url)?;
                                     let url_display = parsed_url.to_string();
-                                    let client = match network {
-                                        NetworkMode::Mainnet => PubkyHttpClient::new()?,
-                                        NetworkMode::Testnet => PubkyHttpClient::testnet()?,
-                                    };
+                                    let client = build_pubky_http_client(network)?;
                                     let mut request = client.request(method_parsed.clone(), parsed_url);
                                     for line in headers.lines() {
                                         if line.trim().is_empty() {

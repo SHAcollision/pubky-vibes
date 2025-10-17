@@ -12,6 +12,7 @@ base64 = "0.22"
 mimalloc = "0.1"
 pubky = "0.6.0-rc.6"
 pubky-app-specs = "0.4"
+pkarr = { version = "3.10", default-features = false, features = ["full"] }
 url = "2.5"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"] }
 qrcode = "0.13"

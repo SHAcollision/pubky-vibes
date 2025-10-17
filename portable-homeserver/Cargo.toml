@@ -32,3 +32,4 @@ dioxus-desktop = "0.7.0-rc.1"
 dioxus = { version = "0.7.0-rc.1", features = ["mobile"] }
 ndk-context = "0.1"
 jni = "0.21"
+

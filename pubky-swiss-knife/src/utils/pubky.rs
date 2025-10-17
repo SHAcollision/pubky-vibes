@@ -6,6 +6,7 @@ use pubky::Pubky;
 
 use crate::app::NetworkMode;
 use crate::utils::logging::ActivityLog;
+use crate::utils::transport::build_pubky_http_client;
 
 #[derive(Clone)]
 pub struct PubkyFacadeState {
@@ -121,12 +122,9 @@ impl std::fmt::Display for PubkyFacadeReadiness {
 impl std::error::Error for PubkyFacadeReadiness {}
 
 pub async fn build_pubky_facade(mode: NetworkMode) -> Result<Arc<Pubky>> {
-    let facade = tokio::task::spawn_blocking(move || match mode {
-        NetworkMode::Mainnet => Pubky::new(),
-        NetworkMode::Testnet => Pubky::testnet(),
-    })
-    .await
-    .map_err(|err| anyhow!("Failed to join Pubky build task: {err}"))??;
+    let client = tokio::task::spawn_blocking(move || build_pubky_http_client(mode))
+        .await
+        .map_err(|err| anyhow!("Failed to join Pubky client build task: {err}"))??;
 
-    Ok(Arc::new(facade))
+    Ok(Arc::new(Pubky::with_client(client)))
 }

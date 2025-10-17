@@ -6,3 +6,4 @@ pub mod mobile;
 pub mod pubky;
 pub mod qr;
 pub mod recovery;
+pub mod transport;

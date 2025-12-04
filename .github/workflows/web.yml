@@ -17,7 +17,7 @@ jobs:
       - name: Add wasm target
         run: rustup target add wasm32-unknown-unknown
       - name: Build web bundle
-        run: trunk build --release --config Trunk.toml --file web/index.html
+        run: trunk build --release --config Trunk.toml web/index.html
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:

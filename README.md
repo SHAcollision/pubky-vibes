@@ -50,11 +50,11 @@ The GitHub workflow handles toolchain setup automatically.
 
 ### Linux build prerequisites
 
-Native builds (CI and local) rely on GTK/WebKit and indicator packages. Install them on Debian/Ubuntu with:
+Native builds (CI and local) rely on GTK/WebKit, indicator, and xdotool packages. Install them on Debian/Ubuntu with:
 
 ```bash
 sudo apt-get update
-sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
+sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev
 ```
 
 ## Project layout

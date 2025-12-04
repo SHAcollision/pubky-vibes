@@ -47,7 +47,6 @@ pub fn launch_web() {
 }
 
 #[cfg(target_os = "android")]
-#[no_mangle]
-pub fn android_main(_app: dioxus_mobile::AndroidApp) {
+pub fn launch_mobile() {
     dioxus::LaunchBuilder::mobile().launch(app);
 }

@@ -4,6 +4,11 @@ fn main() {
         dioxus_template::launch_desktop();
     }
 
+    #[cfg(target_os = "android")]
+    {
+        dioxus_template::launch_mobile();
+    }
+
     #[cfg(target_arch = "wasm32")]
     {
         dioxus_template::launch_web();

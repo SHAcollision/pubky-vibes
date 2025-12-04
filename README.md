@@ -38,7 +38,9 @@ cargo install cargo-apk
 ANDROID_SDK_ROOT=/path/to/sdk ANDROID_NDK_HOME=/path/to/ndk cargo apk build --release
 ```
 
-The GitHub workflow handles toolchain setup automatically.
+The GitHub workflow generates a throwaway release keystore for CI builds. Locally, set
+`CARGO_APK_RELEASE_KEYSTORE_PASSWORD` and `CARGO_APK_RELEASE_KEY_PASSWORD` if you prefer
+using your own signing keys.
 
 ## Continuous integration
 
@@ -61,7 +63,8 @@ sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicat
 
 - `src/lib.rs` – shared UI (`app`) plus platform-specific launchers.
 - `src/main.rs` – desktop entrypoint.
-- `web/` – index, styles, and icon for web builds.
+- `index.html` – Trunk entrypoint for web builds.
+- `web/` – styles and icons copied into the web bundle.
 - `Dioxus.toml` and `Trunk.toml` – configuration for the Dioxus CLI and Trunk-based builds.
 
 ## Customizing

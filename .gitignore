@@ -8,3 +8,4 @@ node_modules
 *.wasm
 *.apk
 *.aab
+ci-release.keystore

@@ -31,6 +31,12 @@ target_sdk_version = 34
 min_sdk_version = 24
 build_targets = ["aarch64-linux-android"]
 
+[package.metadata.android.signing.release]
+path = "ci-release.keystore"
+keystore_password = { env = "CARGO_APK_RELEASE_KEYSTORE_PASSWORD" }
+key_alias = "release"
+key_password = { env = "CARGO_APK_RELEASE_KEY_PASSWORD" }
+
 [profile.release]
 codegen-units = 1
 lto = true

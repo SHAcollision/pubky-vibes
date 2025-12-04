@@ -1,0 +1,24 @@
+name: Desktop build
+
+on:
+  workflow_call:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  desktop:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-rust@v1
+        with:
+          toolchain: stable
+      - name: Build release binary
+        run: cargo build --release
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dioxus-template-desktop
+          path: target/release/dioxus-template
+          if-no-files-found: error

@@ -1,0 +1,24 @@
+[application]
+name = "dioxus-template"
+out_dir = "dist"
+asset_dir = "web"
+
+[web.app]
+title = "Dioxus template"
+base_path = "./"
+
+[web.watcher]
+watch_path = ["src", "web"]
+
+[web.resource]
+style = ["styles.css"]
+
+[web.resource.dev]
+custom_head = ["<meta name=\"description\" content=\"Dioxus starter for desktop, web, and Android\">"]
+
+[build]
+release = true
+
+[android]
+app_name = "dioxus-template"
+icon = "web/icons/icon.svg"

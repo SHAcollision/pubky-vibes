@@ -1,0 +1,17 @@
+[build]
+target = "wasm32-unknown-unknown"
+out_dir = "dist/web"
+public_url = "/"
+release = true
+
+[serve]
+address = "0.0.0.0"
+port = 8080
+
+[[copy]]
+from = "web/styles.css"
+to = "styles.css"
+
+[[copy]]
+from = "web/icons/icon.svg"
+to = "icons/icon.svg"

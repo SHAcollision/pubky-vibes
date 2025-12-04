@@ -1,42 +1,62 @@
-# pubky-vibes
+# dioxus-template
 
-**Strictly** vibe coded [Pubky](https://github.com/pubky/pubky-core) projects.
+A minimal Dioxus starter tailored for a single-application repository. The template ships ready-to-use workflows for desktop, web, Android, and release packaging while keeping the source as small as possible.
 
-### Contribution guidelines
+## What you get
 
-- Ideally prompted from your phone. No desktop/laptop allowed.
-- All cloud coding agent are allowed.
-- Make your client test your code before contributing.
-- No IDE, no manual edit on commits. No human code allowed.
-- Use voice whenever possible. Go on a walk or for lunch while prompting, no prompting from your desk.
-- Add shareable links with your prompting and agent logs for others to learn. For example, links like this one: [Codex](https://chatgpt.com/codex/tasks/task_e_68e97ff5b43083298ebefc7e6980c4ef)
-- Keep repo AI friendly. Tell your AI to avoid committing `package-lock.json` or `Cargo.lock`.
+- **Cross-platform entrypoints** powered by `dioxus` 0.6 with desktop, web, and Android launchers.
+- **Allocator tuned for apps** via `mimalloc` on native builds.
+- **Web assets** in `web/` with `Trunk.toml` for quick `trunk serve` sessions.
+- **Android metadata** baked into `Cargo.toml` so `cargo apk` or `dx build --platform android` can produce an APK.
+- **Opinionated CI** pipelines for formatting, linting, tests, platform builds, and release artifacts.
 
-## Projects
+## Running locally
 
-### [Pubky Swiss Knife](pubky-swiss-knife)
-
-A multi-tool for anything Pubky. Built using the Pubky rust SDK and Dioxus. [Initial Codex prompt here](https://chatgpt.com/s/cd_68e9a87740108191936e11721d314fea)
-<img width="1210" height="673" alt="image" src="https://github.com/user-attachments/assets/41218313-0177-4134-bc79-d611fbd9399d" />
-
-### [Portable Homeserver](portable-homeserver)
-
-Embedded multiplatform mainnet and testnet homeserver. Built using the Pubky rust SDK and Dioxus. [Initial Codex prompt here](https://chatgpt.com/s/cd_68e9b9732a688191a61e6ff03a49cbdf).
-<img width="913" height="782" alt="image" src="https://github.com/user-attachments/assets/e473c194-1b0e-4d9c-84e1-e2b138e063c3" />
-
-## Agent Context
-
-Currently using [microsoft/pragmatic-rust-guidelines](https://microsoft.github.io/rust-guidelines/agents/all.txt) as a base for `AGENTS.md`
-
-Add this on your agent environment (container) setup script.
+### Desktop
 
 ```bash
-# Microsoft's Pragmatic Rust Guidelines for Agents (21K tokens)
-curl -fsSL https://microsoft.github.io/rust-guidelines/agents/all.txt >> AGENTS.md
-
-# Ubuntu deps needed for Dioxus
-apt update
-apt install -y build-essential pkg-config libxdo-dev \
-  libgtk-3-dev libwebkit2gtk-4.1-dev libsoup-3.0-dev \
-  libssl-dev libayatana-appindicator3-dev
+cargo run
 ```
+
+### Web (wasm)
+
+Install `trunk` once and serve:
+
+```bash
+rustup target add wasm32-unknown-unknown
+cargo install trunk
+trunk serve --open
+```
+
+### Android
+
+Ensure you have the Android SDK + NDK, then build an APK:
+
+```bash
+rustup target add aarch64-linux-android
+cargo install cargo-apk
+aNDROID_SDK_ROOT=/path/to/sdk ANDROID_NDK_HOME=/path/to/ndk cargo apk build --release
+```
+
+The GitHub workflow handles toolchain setup automatically.
+
+## Continuous integration
+
+- **CI (fmt, check, clippy, test):** `.github/workflows/ci.yml` keeps the codebase clean.
+- **Web artifact:** `.github/workflows/web.yml` builds the WASM bundle with `trunk` and uploads `dist/web`.
+- **Desktop artifact:** `.github/workflows/desktop.yml` builds a release binary for Linux and uploads it.
+- **Android APK:** `.github/workflows/android.yml` provisions the Android SDK/NDK, then runs `cargo apk` to generate an installable APK artifact.
+- **Release bundles:** `.github/workflows/release.yml` reuses the platform build steps and attaches artifacts to a GitHub Release when a tag is pushed.
+
+## Project layout
+
+- `src/lib.rs` – shared UI (`app`) plus platform-specific launchers.
+- `src/main.rs` – desktop entrypoint.
+- `web/` – index, styles, and icon for web builds.
+- `Dioxus.toml` and `Trunk.toml` – configuration for the Dioxus CLI and Trunk-based builds.
+
+## Customizing
+
+- Update `Cargo.toml` metadata for your app id, signing, and SDK levels.
+- Extend `web/` with additional assets or routes.
+- Tune workflow matrices to add more targets (macOS, Windows, iOS) as needed.

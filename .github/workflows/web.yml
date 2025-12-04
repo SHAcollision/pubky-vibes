@@ -1,0 +1,28 @@
+name: Web build
+
+on:
+  workflow_call:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-rust@v1
+        with:
+          toolchain: stable
+      - name: Install trunk
+        run: cargo install trunk
+      - name: Add wasm target
+        run: rustup target add wasm32-unknown-unknown
+      - name: Build web bundle
+        run: trunk build --release --config Trunk.toml --file web/index.html
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dioxus-template-web
+          path: dist/web
+          if-no-files-found: error

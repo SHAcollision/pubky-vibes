@@ -1,0 +1,39 @@
+[package]
+name = "dioxus-template"
+version = "0.1.0"
+edition = "2021"
+authors = ["Dioxus Template Maintainers"]
+description = "Minimal Dioxus starter with desktop, web, and Android workflows"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[lib]
+name = "dioxus_template"
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "dioxus-template"
+path = "src/main.rs"
+
+[dependencies]
+dioxus = { version = "0.6.2", features = ["macro", "desktop", "web", "mobile", "hooks", "signals", "logger"] }
+dioxus-desktop = "0.6.2"
+dioxus-mobile = "0.6.2"
+dioxus-web = "0.6.2"
+mimalloc = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+[package.metadata.android]
+package = "com.example.dioxustemplate"
+apk_name = "dioxus-template"
+label = "Dioxus Template"
+target_sdk_version = 34
+min_sdk_version = 24
+build_targets = ["aarch64-linux-android"]
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "z"
+panic = "abort"
+strip = true

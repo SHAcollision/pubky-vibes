@@ -15,6 +15,9 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
       - name: Install Android SDK
         uses: android-actions/setup-android@v3
+      - name: Install Android platform and build tools
+        run: |
+          yes | sdkmanager "platforms;android-30" "build-tools;30.0.3" "platform-tools"
       - name: Install cargo-apk
         run: cargo install cargo-apk
       - name: Add Android target

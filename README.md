@@ -30,12 +30,12 @@ trunk serve --open
 
 ### Android
 
-Ensure you have the Android SDK + NDK, then build an APK:
+Ensure you have the Android SDK + NDK (API level 30+) installed, then build an APK:
 
 ```bash
 rustup target add aarch64-linux-android
 cargo install cargo-apk
-aNDROID_SDK_ROOT=/path/to/sdk ANDROID_NDK_HOME=/path/to/ndk cargo apk build --release
+ANDROID_SDK_ROOT=/path/to/sdk ANDROID_NDK_HOME=/path/to/ndk cargo apk build --release
 ```
 
 The GitHub workflow handles toolchain setup automatically.
@@ -47,6 +47,15 @@ The GitHub workflow handles toolchain setup automatically.
 - **Desktop artifact:** `.github/workflows/desktop.yml` builds a release binary for Linux and uploads it.
 - **Android APK:** `.github/workflows/android.yml` provisions the Android SDK/NDK, then runs `cargo apk` to generate an installable APK artifact.
 - **Release bundles:** `.github/workflows/release.yml` reuses the platform build steps and attaches artifacts to a GitHub Release when a tag is pushed.
+
+### Linux build prerequisites
+
+Native builds (CI and local) rely on GTK/WebKit and indicator packages. Install them on Debian/Ubuntu with:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev
+```
 
 ## Project layout
 

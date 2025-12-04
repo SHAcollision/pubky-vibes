@@ -12,9 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust
-        uses: actions/setup-rust@v1
-        with:
-          toolchain: stable
+        uses: dtolnay/rust-toolchain@stable
       - name: Install Android SDK
         uses: android-actions/setup-android@v3
       - name: Install cargo-apk

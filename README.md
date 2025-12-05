@@ -25,6 +25,10 @@ Install `trunk` once and serve:
 ```bash
 rustup target add wasm32-unknown-unknown
 cargo install trunk
+sudo apt-get install -y binaryen
+mkdir -p ~/.cache/trunk/wasm-opt-version_123/bin
+cp scripts/wasm-opt ~/.cache/trunk/wasm-opt-version_123/bin/wasm-opt
+chmod +x ~/.cache/trunk/wasm-opt-version_123/bin/wasm-opt
 trunk serve --open
 ```
 
@@ -38,9 +42,11 @@ cargo install cargo-apk
 ANDROID_SDK_ROOT=/path/to/sdk ANDROID_NDK_HOME=/path/to/ndk cargo apk build --release
 ```
 
-The GitHub workflow generates a throwaway release keystore for CI builds. Locally, set
-`CARGO_APK_RELEASE_KEYSTORE_PASSWORD` and `CARGO_APK_RELEASE_KEY_PASSWORD` if you prefer
-using your own signing keys.
+The GitHub workflow generates a throwaway release keystore (password `android`) for CI builds to
+match the signing metadata in `Cargo.toml`, and exports `CARGO_APK_RELEASE_KEYSTORE` and
+`CARGO_APK_RELEASE_KEYSTORE_PASSWORD` so `cargo-apk` can sign. If you prefer using your own
+signing keys, update the signing fields in `Cargo.toml` and adjust the workflow to point at your
+keystore credentials.
 
 ## Continuous integration
 
@@ -64,7 +70,8 @@ sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libayatana-appindicat
 - `src/lib.rs` – shared UI (`app`) plus platform-specific launchers.
 - `src/main.rs` – desktop entrypoint.
 - `index.html` – Trunk entrypoint for web builds.
-- `web/` – styles and icons copied into the web bundle.
+- `web/` – styles and other static assets copied into the web bundle.
+- `icons/` – favicon and launcher icons referenced by `index.html`.
 - `Dioxus.toml` and `Trunk.toml` – configuration for the Dioxus CLI and Trunk-based builds.
 
 ## Customizing

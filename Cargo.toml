@@ -16,12 +16,20 @@ name = "dioxus-template"
 path = "src/main.rs"
 
 [dependencies]
-dioxus = { version = "0.6.2", features = ["macro", "desktop", "web", "mobile", "hooks", "signals", "logger"] }
+dioxus = { version = "0.6.2", features = ["macro", "hooks", "signals", "logger"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+dioxus = { version = "0.6.2", features = ["web"] }
+dioxus-web = "0.6.2"
+tokio = { version = "1.48", default-features = false, features = ["macros", "rt"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+dioxus = { version = "0.6.2", features = ["desktop", "mobile", "web"] }
 dioxus-desktop = "0.6.2"
 dioxus-mobile = "0.6.2"
 dioxus-web = "0.6.2"
 mimalloc = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 
 [package.metadata.android]
 package = "com.example.dioxustemplate"
@@ -33,9 +41,7 @@ build_targets = ["aarch64-linux-android"]
 
 [package.metadata.android.signing.release]
 path = "ci-release.keystore"
-keystore_password = { env = "CARGO_APK_RELEASE_KEYSTORE_PASSWORD" }
-key_alias = "release"
-key_password = { env = "CARGO_APK_RELEASE_KEY_PASSWORD" }
+keystore_password = "android"
 
 [profile.release]
 codegen-units = 1

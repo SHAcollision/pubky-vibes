@@ -21,4 +21,4 @@ release = true
 
 [android]
 app_name = "dioxus-template"
-icon = "web/icons/icon.svg"
+icon = "icons/icon.svg"

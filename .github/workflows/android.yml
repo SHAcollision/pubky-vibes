@@ -33,8 +33,8 @@ jobs:
           ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
           ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
+          CARGO_APK_RELEASE_KEYSTORE: ${{ github.workspace }}/ci-release.keystore
           CARGO_APK_RELEASE_KEYSTORE_PASSWORD: android
-          CARGO_APK_RELEASE_KEY_PASSWORD: android
         run: cargo apk build --release
       - name: Upload APK
         uses: actions/upload-artifact@v4

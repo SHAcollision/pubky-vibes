@@ -1,4 +1,3 @@
-#![cfg_attr(target_os = "android", no_main)]
 #![cfg_attr(target_os = "android", allow(non_snake_case))]
 
 /// Platform dispatcher.

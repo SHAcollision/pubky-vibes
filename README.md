@@ -43,13 +43,14 @@ Ensure you have the Android SDK + NDK (API level 30+) installed, then build an A
 ```bash
 rustup target add aarch64-linux-android
 cargo install cargo-apk
-ANDROID_SDK_ROOT=/path/to/sdk ANDROID_NDK_HOME=/path/to/ndk cargo apk build --release --lib --target aarch64-linux-android
+ANDROID_SDK_ROOT=/path/to/sdk ANDROID_NDK_HOME=/path/to/ndk cargo apk build --release --target aarch64-linux-android
 ```
 
-The GitHub workflow builds the default binary target (so the embedded `main` symbol is present on device) and generates a
-throwaway release keystore (password `android`) for CI builds to match the signing metadata in `Cargo.toml`. It also exports
-`CARGO_APK_RELEASE_KEYSTORE` and `CARGO_APK_RELEASE_KEYSTORE_PASSWORD` so `cargo-apk` can sign. If you prefer using your own
-signing keys, update the signing fields in `Cargo.toml` and adjust the workflow to point at your keystore credentials.
+The GitHub workflow drives `cargo-apk` against the default binary target, which keeps the native-activity entrypoint exported
+through `ndk_glue` while still packaging the `cdylib` that Android expects. CI generates a throwaway release keystore
+(password `android`) for builds to match the signing metadata in `Cargo.toml` and exports `CARGO_APK_RELEASE_KEYSTORE` and
+`CARGO_APK_RELEASE_KEYSTORE_PASSWORD` so `cargo-apk` can sign. If you prefer using your own signing keys, update the signing
+fields in `Cargo.toml` and adjust the workflow to point at your keystore credentials.
 
 ## Continuous integration
 

@@ -35,7 +35,7 @@ jobs:
           ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
           CARGO_APK_RELEASE_KEYSTORE: ${{ github.workspace }}/ci-release.keystore
           CARGO_APK_RELEASE_KEYSTORE_PASSWORD: android
-        run: cargo apk build --release --lib --target aarch64-linux-android
+        run: cargo apk build --release --target aarch64-linux-android
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:

@@ -31,9 +31,6 @@ dioxus-mobile = "0.6.2"
 dioxus-web = "0.6.2"
 mimalloc = "0.1"
 
-[target.'cfg(target_os = "android")'.dependencies]
-android-activity = { version = "0.4", features = ["native-activity"] }
-
 [package.metadata.android]
 package = "com.example.dioxustemplate"
 apk_name = "dioxus-template"

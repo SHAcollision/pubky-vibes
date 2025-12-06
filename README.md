@@ -32,6 +32,9 @@ sudo chmod +x /usr/bin/wasm-opt
 trunk serve --open
 ```
 
+The web entry disables `wasm-opt` (via `data-wasm-opt="0"`) to sidestep bulk-memory validation issues. If you want trunk to
+optimize the wasm binary, remove that attribute after ensuring your chosen `wasm-opt` binary supports bulk-memory flags.
+
 ### Android
 
 Ensure you have the Android SDK + NDK (API level 30+) installed, then build an APK:
@@ -39,7 +42,7 @@ Ensure you have the Android SDK + NDK (API level 30+) installed, then build an A
 ```bash
 rustup target add aarch64-linux-android
 cargo install cargo-apk
-ANDROID_SDK_ROOT=/path/to/sdk ANDROID_NDK_HOME=/path/to/ndk cargo apk build --release --lib
+ANDROID_SDK_ROOT=/path/to/sdk ANDROID_NDK_HOME=/path/to/ndk cargo apk build --release
 ```
 
 The GitHub workflow generates a throwaway release keystore (password `android`) for CI builds to
@@ -51,7 +54,7 @@ keystore credentials.
 ## Continuous integration
 
 - **CI (fmt, check, clippy, test):** `.github/workflows/ci.yml` keeps the codebase clean.
-- **Web artifact:** `.github/workflows/web.yml` builds the WASM bundle with `trunk` and uploads `dist/web`.
+- **Web artifact:** `.github/workflows/web.yml` builds the WASM bundle with `trunk` and uploads the `dist` directory.
 - **Desktop artifact:** `.github/workflows/desktop.yml` builds a release binary for Linux and uploads it.
 - **Android APK:** `.github/workflows/android.yml` provisions the Android SDK/NDK, then runs `cargo apk` to generate an installable APK artifact.
 - **Release bundles:** `.github/workflows/release.yml` reuses the platform build steps and attaches artifacts to a GitHub Release when a tag is pushed.

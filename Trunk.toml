@@ -1,6 +1,6 @@
 [build]
 target = "wasm32-unknown-unknown"
-out_dir = "dist/web"
+out_dir = "dist"
 public_url = "/"
 release = true
 
@@ -17,3 +17,4 @@ to = "styles.css"
 [[copy]]
 from = "./icons/icon.svg"
 to = "icons/icon.svg"
+

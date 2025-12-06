@@ -47,15 +47,6 @@ pub fn launch_web() {
 }
 
 #[cfg(target_os = "android")]
-use android_activity::AndroidApp;
-
-#[cfg(target_os = "android")]
-pub fn launch_mobile(_android_app: AndroidApp) {
-    dioxus::LaunchBuilder::mobile().launch(app);
-}
-
-#[cfg(target_os = "android")]
-#[no_mangle]
-pub extern "C" fn android_main(app: AndroidApp) {
-    launch_mobile(app);
+pub fn launch_mobile() {
+    dioxus_mobile::launch(app);
 }

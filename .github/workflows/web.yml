@@ -31,10 +31,12 @@ jobs:
       - name: Add wasm target
         run: rustup target add wasm32-unknown-unknown
       - name: Build web bundle
+        env:
+          TRUNK_WASM_BINDGEN: wasm-bindgen
         run: trunk build --release --config Trunk.toml index.html
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: dioxus-template-web
-          path: dist/web
+          path: dist/web/**
           if-no-files-found: error

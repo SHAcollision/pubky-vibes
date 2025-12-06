@@ -1,3 +1,4 @@
 #!/usr/bin/env bash
 # Wrapper to enable feature flags needed by wasm-opt when processing the generated wasm
-exec /usr/bin/wasm-opt --enable-reference-types --enable-simd --enable-bulk-memory --enable-sign-ext --enable-mutable-globals --enable-nontrapping-float-to-int "$@"
+echo "$@" > /tmp/wasm-opt.args
+exec /usr/bin/wasm-opt-orig --enable-reference-types --enable-simd --enable-bulk-memory --enable-sign-ext --enable-mutable-globals --enable-nontrapping-float-to-int "$@"

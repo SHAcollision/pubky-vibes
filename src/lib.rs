@@ -50,3 +50,9 @@ pub fn launch_web() {
 pub fn launch_mobile() {
     dioxus::LaunchBuilder::mobile().launch(app);
 }
+
+#[cfg(target_os = "android")]
+#[no_mangle]
+pub extern "C" fn main() {
+    launch_mobile();
+}

@@ -43,7 +43,7 @@ Ensure you have the Android SDK + NDK (API level 30+) installed, then build an A
 ```bash
 rustup target add aarch64-linux-android
 cargo install cargo-apk
-ANDROID_SDK_ROOT=/path/to/sdk ANDROID_NDK_HOME=/path/to/ndk cargo apk build --release
+ANDROID_SDK_ROOT=/path/to/sdk ANDROID_NDK_HOME=/path/to/ndk cargo apk build --release --lib --target aarch64-linux-android
 ```
 
 The GitHub workflow builds the default binary target (so the embedded `main` symbol is present on device) and generates a

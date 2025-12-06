@@ -1,0 +1,44 @@
+name: Android APK
+
+on:
+  workflow_call:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install Android platform and build tools
+        run: |
+          yes | sdkmanager "platforms;android-30" "build-tools;30.0.3" "platform-tools"
+      - name: Generate release keystore
+        run: |
+          keytool -genkeypair -v -keystore ci-release.keystore -alias release \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass android -keypass android \
+            -dname "CN=Dioxus Template,OU=CI,O=Dioxus,L=Remote,S=Remote,C=US"
+      - name: Install cargo-apk
+        run: cargo install cargo-apk
+      - name: Add Android target
+        run: rustup target add aarch64-linux-android
+      - name: Build APK
+        env:
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
+          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
+          CARGO_APK_RELEASE_KEYSTORE: ${{ github.workspace }}/ci-release.keystore
+          CARGO_APK_RELEASE_KEYSTORE_PASSWORD: android
+        run: cargo apk build --release
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: dioxus-template-android
+          path: target/release/apk/dioxus-template.apk
+          if-no-files-found: error

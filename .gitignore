@@ -1,0 +1,11 @@
+/target
+/dist
+/.idea
+/.vscode
+node_modules
+*.log
+.DS_Store
+*.wasm
+*.apk
+*.aab
+ci-release.keystore

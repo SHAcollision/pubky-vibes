@@ -1,0 +1,51 @@
+[package]
+name = "dioxus-template"
+version = "0.1.0"
+edition = "2021"
+authors = ["Dioxus Template Maintainers"]
+description = "Minimal Dioxus starter with desktop, web, and Android workflows"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[lib]
+name = "dioxus_template"
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "dioxus-template"
+path = "src/main.rs"
+
+[dependencies]
+dioxus = { version = "0.6.2", features = ["macro", "hooks", "signals", "logger"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+dioxus = { version = "0.6.2", features = ["web"] }
+dioxus-web = "0.6.2"
+tokio = { version = "1.48", default-features = false, features = ["macros", "rt"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+dioxus = { version = "0.6.2", features = ["desktop", "mobile", "web"] }
+dioxus-desktop = "0.6.2"
+dioxus-mobile = "0.6.2"
+dioxus-web = "0.6.2"
+mimalloc = "0.1"
+
+[package.metadata.android]
+package = "com.example.dioxustemplate"
+apk_name = "dioxus-template"
+label = "Dioxus Template"
+target_sdk_version = 34
+min_sdk_version = 24
+build_targets = ["aarch64-linux-android"]
+
+[package.metadata.android.signing.release]
+path = "ci-release.keystore"
+keystore_password = "android"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "z"
+panic = "abort"
+strip = true

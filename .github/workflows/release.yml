@@ -1,0 +1,46 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build-desktop:
+    uses: ./.github/workflows/desktop.yml
+
+  build-web:
+    uses: ./.github/workflows/web.yml
+
+  build-android:
+    uses: ./.github/workflows/android.yml
+
+  publish:
+    needs: [build-desktop, build-web, build-android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download desktop
+        uses: actions/download-artifact@v4
+        with:
+          name: dioxus-template-desktop
+          path: artifacts/desktop
+      - name: Download web bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: dioxus-template-web
+          path: artifacts/web
+      - name: Download android apk
+        uses: actions/download-artifact@v4
+        with:
+          name: dioxus-template-android
+          path: artifacts/android
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/desktop/dioxus-template
+            artifacts/web/**
+            artifacts/android/dioxus-template.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

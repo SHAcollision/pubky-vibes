@@ -26,9 +26,9 @@ Install `trunk` once and serve:
 rustup target add wasm32-unknown-unknown
 cargo install trunk
 sudo apt-get install -y binaryen
-mkdir -p ~/.cache/trunk/wasm-opt-version_123/bin
-cp scripts/wasm-opt ~/.cache/trunk/wasm-opt-version_123/bin/wasm-opt
-chmod +x ~/.cache/trunk/wasm-opt-version_123/bin/wasm-opt
+sudo mv /usr/bin/wasm-opt /usr/bin/wasm-opt-orig
+sudo cp scripts/wasm-opt /usr/bin/wasm-opt
+sudo chmod +x /usr/bin/wasm-opt
 trunk serve --open
 ```
 
@@ -39,7 +39,7 @@ Ensure you have the Android SDK + NDK (API level 30+) installed, then build an A
 ```bash
 rustup target add aarch64-linux-android
 cargo install cargo-apk
-ANDROID_SDK_ROOT=/path/to/sdk ANDROID_NDK_HOME=/path/to/ndk cargo apk build --release
+ANDROID_SDK_ROOT=/path/to/sdk ANDROID_NDK_HOME=/path/to/ndk cargo apk build --release --lib
 ```
 
 The GitHub workflow generates a throwaway release keystore (password `android`) for CI builds to

@@ -18,10 +18,9 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y binaryen
       - name: Prepare wasm-opt wrapper for bulk-memory builds
         run: |
-          cache_dir="$HOME/.cache/trunk/wasm-opt-version_123/bin"
-          mkdir -p "$cache_dir"
-          cp scripts/wasm-opt "$cache_dir/wasm-opt"
-          chmod +x "$cache_dir/wasm-opt"
+          sudo mv /usr/bin/wasm-opt /usr/bin/wasm-opt-orig
+          sudo cp scripts/wasm-opt /usr/bin/wasm-opt
+          sudo chmod +x /usr/bin/wasm-opt
       - name: Add wasm target
         run: rustup target add wasm32-unknown-unknown
       - name: Build web bundle

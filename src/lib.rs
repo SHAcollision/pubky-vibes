@@ -1,8 +1,11 @@
 use dioxus::prelude::*;
 
-#[cfg(not(target_arch = "wasm32"))]
+// Mimalloc performs well on desktop but can be unreliable on some Android
+// devices. Keep the system allocator for Android while retaining mimalloc for
+// other native targets.
+#[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
 use mimalloc::MiMalloc;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(target_os = "android")))]
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 

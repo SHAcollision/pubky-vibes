@@ -33,7 +33,8 @@ trunk serve --open
 ```
 
 The web entry disables `wasm-opt` (via `data-wasm-opt="0"`) to sidestep bulk-memory validation issues. If you want trunk to
-optimize the wasm binary, remove that attribute after ensuring your chosen `wasm-opt` binary supports bulk-memory flags.
+optimize the wasm binary, remove that attribute after ensuring your chosen `wasm-opt` binary supports bulk-memory flags. Trunk
+emits a `.wasm` module in `dist/` alongside the JS shim so CI can upload the full bundle and publish it to GitHub Pages.
 
 ### Android
 
@@ -45,16 +46,16 @@ cargo install cargo-apk
 ANDROID_SDK_ROOT=/path/to/sdk ANDROID_NDK_HOME=/path/to/ndk cargo apk build --release
 ```
 
-The GitHub workflow generates a throwaway release keystore (password `android`) for CI builds to
-match the signing metadata in `Cargo.toml`, and exports `CARGO_APK_RELEASE_KEYSTORE` and
-`CARGO_APK_RELEASE_KEYSTORE_PASSWORD` so `cargo-apk` can sign. If you prefer using your own
-signing keys, update the signing fields in `Cargo.toml` and adjust the workflow to point at your
-keystore credentials.
+The GitHub workflow builds the default binary target (so the embedded `main` symbol is present on device) and generates a
+throwaway release keystore (password `android`) for CI builds to match the signing metadata in `Cargo.toml`. It also exports
+`CARGO_APK_RELEASE_KEYSTORE` and `CARGO_APK_RELEASE_KEYSTORE_PASSWORD` so `cargo-apk` can sign. If you prefer using your own
+signing keys, update the signing fields in `Cargo.toml` and adjust the workflow to point at your keystore credentials.
 
 ## Continuous integration
 
 - **CI (fmt, check, clippy, test):** `.github/workflows/ci.yml` keeps the codebase clean.
-- **Web artifact:** `.github/workflows/web.yml` builds the WASM bundle with `trunk` and uploads the `dist` directory.
+- **Web artifact:** `.github/workflows/web.yml` builds the WASM bundle with `trunk`, uploads the `dist` directory, and (on
+  pushes) publishes it to GitHub Pages.
 - **Desktop artifact:** `.github/workflows/desktop.yml` builds a release binary for Linux and uploads it.
 - **Android APK:** `.github/workflows/android.yml` provisions the Android SDK/NDK, then runs `cargo apk` to generate an installable APK artifact.
 - **Release bundles:** `.github/workflows/release.yml` reuses the platform build steps and attaches artifacts to a GitHub Release when a tag is pushed.

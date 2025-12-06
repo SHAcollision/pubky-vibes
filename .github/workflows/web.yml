@@ -6,6 +6,11 @@ on:
     branches: [main, master]
   pull_request:
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   web:
     runs-on: ubuntu-latest
@@ -40,3 +45,14 @@ jobs:
           name: dioxus-template-web
           path: dist
           if-no-files-found: error
+
+      - name: Upload Pages artifact
+        if: github.event_name == 'push'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+      - name: Deploy to GitHub Pages
+        if: github.event_name == 'push'
+        id: deploy
+        uses: actions/deploy-pages@v4

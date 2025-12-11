@@ -48,3 +48,9 @@ pub fn launch_web() {
 pub fn launch_mobile() {
     dioxus_mobile::launch(app);
 }
+
+#[cfg(target_os = "android")]
+#[ndk_glue::main(backtrace = "on")]
+pub fn main() {
+    launch_mobile();
+}

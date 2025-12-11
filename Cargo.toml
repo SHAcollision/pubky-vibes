@@ -16,19 +16,22 @@ name = "dioxus-template"
 path = "src/main.rs"
 
 [dependencies]
-dioxus = { version = "0.6.2", features = ["macro", "hooks", "signals", "logger"] }
+dioxus = { version = "0.6.3", features = ["macro", "hooks", "signals", "logger"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-dioxus = { version = "0.6.2", features = ["web"] }
-dioxus-web = "0.6.2"
+dioxus = { version = "0.6.3", features = ["web"] }
+dioxus-web = "0.6.3"
 tokio = { version = "1.48", default-features = false, features = ["macros", "rt"] }
 
+[target.'cfg(target_os = "android")'.dependencies]
+ndk-glue = "0.7"
+
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-dioxus = { version = "0.6.2", features = ["desktop", "mobile", "web"] }
-dioxus-desktop = "0.6.2"
+dioxus = { version = "0.6.3", features = ["desktop", "mobile", "web"] }
+dioxus-desktop = "0.6.3"
 dioxus-mobile = "0.6.2"
-dioxus-web = "0.6.2"
+dioxus-web = "0.6.3"
 mimalloc = "0.1"
 
 [package.metadata.android]

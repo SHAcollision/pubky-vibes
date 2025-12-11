@@ -1,11 +1,4 @@
 /target
 /dist
-/.idea
-/.vscode
-node_modules
-*.log
-.DS_Store
-*.wasm
-*.apk
-*.aab
-ci-release.keystore
+/Cargo.lock
+/ci-release.keystore

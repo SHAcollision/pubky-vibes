@@ -27,7 +27,7 @@ pub fn app() -> Element {
                         box-shadow: 0 16px 50px rgba(0,0,0,0.45); border: 1px solid rgba(148, 163, 184, 0.25);",
                 h1 { style: "margin: 0 0 8px; font-size: 24px;", "Pubky Vibes" }
                 p { style: "margin: 0 0 16px; line-height: 1.5;", "Cross-platform starter powered by Dioxus — runs on desktop, web, and Android." }
-                ul { style: "margin: 0; padding-left: 18px; line-height: 1.6;", 
+                ul { style: "margin: 0; padding-left: 18px; line-height: 1.6;",
                     li { "Run locally with `cargo run`." }
                     li { "Preview in the browser via `trunk serve` or `dx serve --platform web`." }
                     li { "Build an Android APK with `cargo apk build --lib`." }
@@ -52,8 +52,5 @@ pub fn launch_web() {
 
 #[cfg(target_os = "android")]
 pub fn launch_mobile() {
-    if let Err(err) = dioxus_mobile::launch(app) {
-        // Surface launch failures in logcat to aid debugging blank screens.
-        eprintln!("failed to launch Dioxus mobile app: {err}");
-    }
+    dioxus_mobile::launch(app);
 }

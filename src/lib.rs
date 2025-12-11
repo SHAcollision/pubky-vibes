@@ -9,6 +9,12 @@ use mimalloc::MiMalloc;
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
+#[cfg(target_os = "android")]
+#[cfg_attr(target_os = "android", ndk_glue::main(backtrace = "on"))]
+fn android_main() {
+    launch_mobile();
+}
+
 pub fn app() -> Element {
     use dioxus::prelude::*;
 

@@ -9,12 +9,6 @@ use mimalloc::MiMalloc;
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
-#[cfg(target_os = "android")]
-#[cfg_attr(target_os = "android", ndk_glue::main(backtrace = "on"))]
-fn android_main() {
-    launch_mobile();
-}
-
 pub fn app() -> Element {
     use dioxus::prelude::*;
 
@@ -30,7 +24,7 @@ pub fn app() -> Element {
                 ul { style: "margin: 0; padding-left: 18px; line-height: 1.6;",
                     li { "Run locally with `cargo run`." }
                     li { "Preview in the browser via `trunk serve` or `dx serve --platform web`." }
-                    li { "Build an Android APK with `cargo apk build --lib`." }
+                    li { "Build an Android APK with `cargo apk build --release --target aarch64-linux-android`." }
                 }
             }
         }
